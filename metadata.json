@@ -1,0 +1,6 @@
+{
+  "name": "NaiLand",
+  "description": "Join Community- Collaborate- Exchange Skills on NaiLand Web3 social platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

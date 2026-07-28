@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: nailand-api
+    env: node
+    buildCommand: cd server && npm install && npx tsc
+    startCommand: cd server && node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        value: https://nailand-chat.vercel.app
