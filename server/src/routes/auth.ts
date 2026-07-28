@@ -139,7 +139,7 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response)
 
     // Check password
     if (!user.passwordHash) {
-      return res.status(401).json({ success: false, error: 'This account uses Google sign-in. Please sign in with Google.' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
