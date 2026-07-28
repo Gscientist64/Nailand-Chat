@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { UserProfile } from '../types';
+import { useAuth } from '../lib/AuthContext';
+import { useCommunities } from '../lib/CommunitiesContext';
 import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DashboardHomeProps {
-  user: UserProfile;
+  user: import('../types').UserProfile;
   onSelectCommunity: (comName: string) => void;
   onSelectDirectChat: (personName: string, avatar: string) => void;
 }
 
 export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat }: DashboardHomeProps) {
+  const { isAuthenticated } = useAuth();
+  const { communities, isLoading } = useCommunities();
   const [activeRegion, setActiveRegion] = useState('Creative');
 
   // Suggested region pills structure
@@ -23,42 +26,24 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     { name: 'Sciences', icon: '⚛️', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' }
   ];
 
-  // Trending collabs data
-  const trendingCollabs = [
-    {
-      id: 'tc-1',
-      name: 'Afolabi Ola',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120',
-      rating: 4.5,
-      desc: 'I create interactive design interfaces that engage users...',
-      engagement: '225k engagement'
-    },
-    {
-      id: 'tc-2',
-      name: 'Afolabi Ola',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-      rating: 4.5,
-      desc: 'I create interactive design interfaces that engage users...',
-      engagement: '225k engagement'
-    },
-    {
-      id: 'tc-3',
-      name: 'Afolabi Ola',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120',
-      rating: 4.5,
-      desc: 'I create interactive design interfaces that engage users...',
-      engagement: '225k engagement'
-    }
-  ];
+  // Real communities from API for trending collabs
+  const trendingCollabs = communities.slice(0, 3).map((c) => ({
+    id: `tc-${c.id}`,
+    name: c.name,
+    avatar: c.avatar,
+    rating: 4.5,
+    desc: c.description.slice(0, 80) + '...',
+    engagement: `${c.memberCount || 0}k members`
+  }));
 
-  // Skills needed grid matching 9 cards of Afolabi Ola exactly as the screenshot
-  const skillsNeededGrid = Array.from({ length: 9 }).map((_, index) => ({
-    id: `sn-card-${index}`,
-    name: 'Afolabi Ola',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120',
-    text: 'I need a person who can help me to create an engaging design interface',
+  // Skills needed grid from communities
+  const skillsNeededGrid = communities.slice(0, 9).map((c) => ({
+    id: `sn-${c.id}`,
+    name: c.name,
+    avatar: c.avatar,
+    text: c.description.slice(0, 100) + '...',
     rating: 4,
-    compensation: 'Payment 100naitoken/$100'
+    compensation: `Join ${c.memberCount || 0} members`
   }));
 
   // Coordinate program prompts to overlay on map

@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import NaiLandLogo from './NaiLandLogo';
 import { ActiveView, UserProfile } from '../types';
+import { useAuth } from '../lib/AuthContext';
 import { ArrowLeft, Check, ShieldAlert, KeyRound, Mail, User, Eye, EyeOff } from 'lucide-react';
 
 interface AuthFlowProps {
   initialView: ActiveView;
-  onSuccess: (user: UserProfile) => void;
+  onSuccess: () => void;
   onBackToHome: () => void;
   onLogInInstead: () => void;
 }
 
 export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogInInstead }: AuthFlowProps) {
+  const auth = useAuth();
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentView, setCurrentView] = useState<ActiveView>(initialView);
 
   useEffect(() => {
@@ -18,17 +22,12 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   }, [initialView]);
   
   // Registration Inputs
-  const [firstName, setFirstName] = useState('John');
-  const [secondName, setSecondName] = useState('John');
-  const [email, setEmail] = useState('john.doe@nailand.com');
-  const [password, setPassword] = useState('SuperSecretSecure123');
+  const [firstName, setFirstName] = useState('');
+  const [secondName, setSecondName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
-
-  // Google Selector States
-  const [showGoogleChooser, setShowGoogleChooser] = useState(false);
-  const [googleStatus, setGoogleStatus] = useState<'idle' | 'loading' | 'success'>('idle');
-  const [selectedGoogleAccount, setSelectedGoogleAccount] = useState<string>('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Login Inputs
   const [loginEmail, setLoginEmail] = useState('afolabi@nailand.com');
@@ -78,38 +77,34 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetCodeSent, setResetCodeSent] = useState(false);
 
-  const handleGoogleSelect = (chosenEmail: string, chosenName: string) => {
-    setGoogleStatus('loading');
-    setSelectedGoogleAccount(chosenEmail);
-    
-    const parts = chosenName.split(' ');
-    const fName = parts[0] || 'Wowinsite';
-    const sName = parts.slice(1).join(' ') || 'Uganda';
-
-    setTimeout(() => {
-      setGoogleStatus('success');
-      setFirstName(fName);
-      setSecondName(sName);
-      setEmail(chosenEmail);
-      
-      setTimeout(() => {
-        // Bypass OTP since Google is trusted
-        setShowGoogleChooser(false);
-        setGoogleStatus('idle');
-        setCurrentView(ActiveView.INTERESTS);
-      }, 700);
-    }, 1200);
-  };
-
-  // Helper validation trigger
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  // Signup: validate first, then go to confirmation
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentView(ActiveView.CONFIRMATION_CODE);
+    if (!agreeTerms) {
+      setApiError('You must agree to the terms');
+      return;
+    }
+    setApiError(null);
+    setIsSubmitting(true);
+    const err = await auth.signup({ firstName, secondName, email, password });
+    setIsSubmitting(false);
+    if (err) {
+      setApiError(err);
+    } else {
+      setCurrentView(ActiveView.CONFIRMATION_CODE);
+    }
   };
 
-  const handleConfirmCode = () => {
+  const handleConfirmCode = async () => {
     const entered = code.join('');
-    if (entered === '4582') {
+    setApiError(null);
+    setIsSubmitting(true);
+    const err = await auth.verifyCode(email, entered);
+    setIsSubmitting(false);
+    if (err) {
+      setConfirmState('error');
+      setApiError(err);
+    } else {
       setConfirmState('success');
       setTimeout(() => {
         setCurrentView(ActiveView.INTERESTS);
@@ -120,31 +115,26 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   };
 
   const handleInterestsNext = () => {
+    auth.updateUser({ interests: selectedInterests });
     setCurrentView(ActiveView.SUGGESTED_REGIONS);
   };
 
   const handleAccessDashboard = () => {
-    const profile: UserProfile = {
-      firstName: firstName || 'John',
-      secondName: secondName || 'Doe',
-      email: email || 'john@nailand.com',
-      interests: selectedInterests,
-      region: selectedRegion
-    };
-    onSuccess(profile);
+    auth.updateUser({ region: selectedRegion });
+    onSuccess();
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Pre-populate profile for mock logins too!
-    const profile: UserProfile = {
-      firstName: 'Afolabi',
-      secondName: 'Emmanuel',
-      email: loginEmail || 'afolabi@nailand.com',
-      interests: ['Figma', 'Web Design', 'Backend Engineering'],
-      region: 'Africa'
-    };
-    onSuccess(profile);
+    setApiError(null);
+    setIsSubmitting(true);
+    const err = await auth.login(loginEmail, loginPassword);
+    setIsSubmitting(false);
+    if (err) {
+      setApiError(err);
+    } else {
+      onSuccess();
+    }
   };
 
   return (
@@ -296,98 +286,6 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                 </div>
               </div>
 
-              {/* Frame 11 - Sign In with Google */}
-              <button 
-                type="button"
-                onClick={() => setShowGoogleChooser(true)}
-                className="flex flex-row justify-center items-center bg-[#F9F9F9] border border-[#DBDBDB] hover:bg-stone-100 active:scale-[0.98] transition rounded-xl cursor-pointer w-full text-left"
-                style={{
-                  boxSizing: 'border-box',
-                  padding: '8px 16px',
-                  gap: '12px',
-                  width: '422px',
-                  maxWidth: '100%',
-                  height: '48px',
-                  borderRadius: '12px'
-                }}
-                id="signup-google-btn-frame"
-              >
-                {/* Google SVG Logo (32x32) */}
-                <svg className="w-8 h-8 shrink-0" viewBox="0 0 24 24" id="google-logo-svg">
-                  <path
-                    fill="#518EF8"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#28B446"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBB00"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#F14336"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span 
-                  className="font-sans font-semibold text-center select-none whitespace-nowrap"
-                  style={{
-                    width: '144px',
-                    fontSize: '16px',
-                    lineHeight: '24px',
-                    letterSpacing: '0.002em',
-                    color: '#797575'
-                  }}
-                >
-                  Sign in with google
-                </span>
-              </button>
-
-              {/* 03-Devider */}
-              <div 
-                className="flex flex-row justify-center items-center w-full"
-                style={{
-                  gap: '10px',
-                  width: '422px',
-                  maxWidth: '100%',
-                  height: '44px'
-                }}
-                id="sign-up-divider-row"
-              >
-                <div className="flex-1" style={{ width: '134px', height: '0px', border: '1px solid #DBDBDB' }} />
-                
-                {/* Or Capsule Box */}
-                <div 
-                  className="flex flex-col justify-center items-center text-center shrink-0 border border-[#DBDBDB] rounded-xl bg-white select-none"
-                  style={{
-                    boxSizing: 'border-box',
-                    padding: '10px',
-                    gap: '12px',
-                    width: '134px',
-                    height: '44px',
-                    borderRadius: '12px'
-                  }}
-                >
-                  <span 
-                    className="font-sans font-semibold text-center"
-                    style={{
-                      width: '114px',
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      letterSpacing: '0.002em',
-                      color: '#121926'
-                    }}
-                  >
-                    or
-                  </span>
-                </div>
-
-                <div className="flex-1" style={{ width: '134px', height: '0px', border: '1px solid #DBDBDB' }} />
-              </div>
-
-              {/* Sign in with Email address banner description text */}
               <span 
                 className="font-sans font-semibold text-center block w-full select-none"
                 style={{
@@ -400,7 +298,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                   color: '#4C4949'
                 }}
               >
-                Sign in with Email address
+                Create your account
               </span>
 
               {/* Text Input 1 (First name) */}
@@ -653,10 +551,18 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                 </span>
               </div>
 
+              {/* API Error */}
+              {apiError && (
+                <div className="w-full text-center">
+                  <span className="text-xs text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded">{apiError}</span>
+                </div>
+              )}
+
               {/* Submit Button */}
               <button 
                 type="submit"
-                className="flex flex-row justify-center items-center py-3 px-6 gap-4 border border-[#100F0F] bg-[#FFC107] hover:bg-[#e0ac10] text-[#100F0F] rounded-[40px] cursor-pointer transition w-full active:scale-95 text-center"
+                disabled={isSubmitting}
+                className="flex flex-row justify-center items-center py-3 px-6 gap-4 border border-[#100F0F] bg-[#FFC107] hover:bg-[#e0ac10] disabled:bg-stone-300 disabled:cursor-not-allowed text-[#100F0F] rounded-[40px] cursor-pointer transition w-full active:scale-95 text-center"
                 style={{
                   boxSizing: 'border-box',
                   width: '422px',
@@ -671,7 +577,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                     height: '24px'
                   }}
                 >
-                  Sign Up
+                  {isSubmitting ? 'Creating...' : 'Sign Up'}
                 </span>
               </button>
 
@@ -802,96 +708,6 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                   </div>
                 </div>
 
-                {/* Secure Google sign in button */}
-                <button 
-                  type="button"
-                  onClick={() => setShowGoogleChooser(true)}
-                  className="flex flex-row justify-center items-center bg-[#F9F9F9] border border-[#DBDBDB] hover:bg-stone-100 active:scale-[0.98] transition rounded-xl cursor-pointer w-full text-left"
-                  style={{
-                    boxSizing: 'border-box',
-                    padding: '8px 16px',
-                    gap: '12px',
-                    width: '422px',
-                    maxWidth: '100%',
-                    height: '48px',
-                    borderRadius: '12px'
-                  }}
-                  id="login-google-btn-frame"
-                >
-                  <svg className="w-8 h-8 shrink-0" viewBox="0 0 24 24" id="google-logo-svg-login">
-                    <path
-                      fill="#518EF8"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#28B446"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBB00"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#F14336"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span 
-                    className="font-sans font-semibold text-center select-none whitespace-nowrap"
-                    style={{
-                      width: '144px',
-                      fontSize: '16px',
-                      lineHeight: '24px',
-                      letterSpacing: '0.002em',
-                      color: '#797575'
-                    }}
-                  >
-                    Sign in with google
-                  </span>
-                </button>
-
-                {/* Divider */}
-                <div 
-                  className="flex flex-row justify-center items-center w-full"
-                  style={{
-                    gap: '10px',
-                    width: '422px',
-                    maxWidth: '100%',
-                    height: '44px'
-                  }}
-                  id="login-divider-row"
-                >
-                  <div className="flex-1" style={{ width: '134px', height: '0px', border: '1px solid #DBDBDB' }} />
-                  
-                  <div 
-                    className="flex flex-col justify-center items-center text-center shrink-0 border border-[#DBDBDB] rounded-xl bg-white select-none"
-                    style={{
-                      boxSizing: 'border-box',
-                      padding: '10px',
-                      gap: '12px',
-                      width: '134px',
-                      height: '44px',
-                      borderRadius: '12px'
-                    }}
-                  >
-                    <span 
-                      className="font-sans font-semibold text-center"
-                      style={{
-                        width: '114px',
-                        fontSize: '16px',
-                        lineHeight: '24px',
-                        letterSpacing: '0.002em',
-                        color: '#121926'
-                      }}
-                    >
-                      or
-                    </span>
-                  </div>
-
-                  <div className="flex-1" style={{ width: '134px', height: '0px', border: '1px solid #DBDBDB' }} />
-                </div>
-
-                {/* Email text block */}
                 <span 
                   className="font-sans font-semibold text-center block w-full select-none"
                   style={{
@@ -904,7 +720,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                     color: '#4C4949'
                   }}
                 >
-                  Sign in with Email address
+                  Sign in with your email
                 </span>
 
                 {/* Email input field */}
@@ -1022,15 +838,18 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                   </button>
                 </div>
 
-                {/* Quick Demo Assist */}
-                <div className="bg-stone-50 border border-stone-100 p-2.5 rounded-xl w-full text-[10.5px] text-stone-500 leading-relaxed mt-1" id="login-demo-assist-new">
-                  💡 <strong className="text-stone-700">Quick entry:</strong> Active session preset. Click the yellow button directly to log in!
-                </div>
+                {/* API Error */}
+                {apiError && (
+                  <div className="w-full text-center mt-1">
+                    <span className="text-xs text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded">{apiError}</span>
+                  </div>
+                )}
 
                 {/* Submit button */}
                 <button 
                   type="submit"
-                  className="flex flex-row justify-center items-center py-3 px-6 gap-4 border border-[#100F0F] bg-[#FFC107] hover:bg-[#e0ac10] text-[#100F0F] rounded-[40px] cursor-pointer transition w-full active:scale-95 text-center mt-2 shadow-sm"
+                  disabled={isSubmitting}
+                  className="flex flex-row justify-center items-center py-3 px-6 gap-4 border border-[#100F0F] bg-[#FFC107] hover:bg-[#e0ac10] disabled:bg-stone-300 disabled:cursor-not-allowed text-[#100F0F] rounded-[40px] cursor-pointer transition w-full active:scale-95 text-center mt-2 shadow-sm"
                   style={{
                     boxSizing: 'border-box',
                     width: '422px',
@@ -1596,147 +1415,6 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
       )}
 
       {/* ======================================= */}
-      {/* GOOGLE SIGN IN ACCOUNT SELECTOR MODAL  */}
-      {/* ======================================= */}
-      {showGoogleChooser && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="google-overlay-backdrop">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200/80 w-full max-w-[430px] overflow-hidden flex flex-col items-center p-8 animate-in fade-in duration-200" id="google-modal-card">
-            {/* Google Logo Header */}
-            <div className="flex justify-center mb-4" id="google-hdr-logo">
-              <svg className="w-10 h-10" viewBox="0 0 24 24" id="google-active-svg">
-                <path
-                  fill="#518EF8"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#28B446"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBB00"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#F14336"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-            </div>
-
-            <h3 className="text-xl font-sans font-semibold text-stone-900 leading-tight text-center" id="g-choose-title">
-              Sign in with Google
-            </h3>
-            <p className="text-xs text-stone-500 mt-1.5 text-center mb-6" id="g-choose-sub">
-              to continue to <strong className="text-stone-950 font-bold font-sans">Nailand Workspace</strong>
-            </p>
-
-            {googleStatus === 'loading' ? (
-              <div className="flex flex-col items-center justify-center py-8 w-full" id="google-loading-state">
-                <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-                <span className="text-sm font-sans text-stone-700 font-semibold">
-                  Connecting secure gateway...
-                </span>
-                <span className="text-xs text-stone-400 mt-1">
-                  Verifying {selectedGoogleAccount}
-                </span>
-              </div>
-            ) : googleStatus === 'success' ? (
-              <div className="flex flex-col items-center justify-center py-8 w-full text-center" id="google-success-state">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                  <Check className="w-6 h-6 text-emerald-600" />
-                </div>
-                <span className="text-sm font-sans font-bold text-emerald-800">
-                  Authentication Successful!
-                </span>
-                <span className="text-xs text-stone-500 mt-1">
-                  Bypassing OTP checklist for personalization
-                </span>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5 w-full mb-6" id="google-accounts-list">
-                {/* Account 1 - wowinsiteuganda@gmail.com */}
-                <button
-                  type="button"
-                  onClick={() => handleGoogleSelect('wowinsiteuganda@gmail.com', 'Wowinsite Uganda')}
-                  className="flex flex-row items-center w-full p-3.5 border border-stone-200 hover:border-[#518EF8] hover:bg-slate-50 rounded-xl transition cursor-pointer text-left"
-                  id="g-acc-item-1"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white font-sans font-semibold text-base shadow shrink-0">
-                    W
-                  </div>
-                  <div className="ml-3.5 flex-1 min-w-0">
-                    <p className="text-sm font-sans font-semibold text-stone-800 truncate leading-snug">
-                      Wowinsite Uganda
-                    </p>
-                    <p className="text-xs font-sans text-stone-500 truncate leading-none mt-1">
-                      wowinsiteuganda@gmail.com
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded shrink-0">
-                    Active Session
-                  </span>
-                </button>
-
-                {/* Account 2 - afolabi@nailand.com */}
-                <button
-                  type="button"
-                  onClick={() => handleGoogleSelect('afolabi@nailand.com', 'Afolabi Emmanuel')}
-                  className="flex flex-row items-center w-full p-3.5 border border-stone-100 hover:border-[#518EF8] hover:bg-slate-50 rounded-xl transition cursor-pointer text-left opacity-80 hover:opacity-100"
-                  id="g-acc-item-2"
-                >
-                  <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-sans font-semibold text-base shrink-0">
-                    A
-                  </div>
-                  <div className="ml-3.5 flex-1 min-w-0">
-                    <p className="text-sm font-sans font-semibold text-stone-800 truncate leading-snug">
-                      Afolabi Emmanuel
-                    </p>
-                    <p className="text-xs font-sans text-stone-500 truncate leading-none mt-1">
-                      afolabi@nailand.com
-                    </p>
-                  </div>
-                </button>
-
-                {/* Choose another account option */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const emailInput = prompt("Enter Google Account Email address:", "visitor@gmail.com");
-                    if (emailInput) {
-                      const nameInput = prompt("Enter display name:", "Visitor Peer");
-                      if (nameInput) {
-                        handleGoogleSelect(emailInput, nameInput);
-                      }
-                    }
-                  }}
-                  className="flex flex-row items-center justify-center w-full py-2.5 hover:bg-stone-50 border border-dashed border-stone-200 rounded-xl transition font-sans text-xs text-stone-500 hover:text-stone-800 cursor-pointer"
-                  id="g-acc-another"
-                >
-                  + Use another account
-                </button>
-              </div>
-            )}
-
-            <p className="text-[10px] text-stone-400 font-sans leading-relaxed text-center" id="g-chooser-foot">
-              To continue, Google will share your name, email address, language preference, and profile picture with Nailand. See our{' '}
-              <span className="underline cursor-pointer hover:text-stone-700">Privacy Policy</span> and{' '}
-              <span className="underline cursor-pointer hover:text-stone-700">Terms of Service</span>.
-            </p>
-
-            {googleStatus === 'idle' && (
-              <button
-                type="button"
-                onClick={() => setShowGoogleChooser(false)}
-                className="mt-6 text-xs text-stone-400 hover:text-stone-700 font-sans font-medium transition underline cursor-pointer"
-                id="btn-close-g-chooser"
-              >
-                Close Gateway
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

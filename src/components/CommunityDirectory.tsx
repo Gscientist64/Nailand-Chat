@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Star } from 'lucide-react';
+import { useCommunities } from '../lib/CommunitiesContext';
 
 interface CommunityDirectoryProps {
   onSelectCommunity: (comName: string) => void;
@@ -7,6 +8,7 @@ interface CommunityDirectoryProps {
 
 export default function CommunityDirectory({ onSelectCommunity }: CommunityDirectoryProps) {
   const [activeRegion, setActiveRegion] = useState('Creative');
+  const { communities, isLoading } = useCommunities();
 
   // Suggested region pills structure matching DashboardHome for alignment
   const suggestedRegions = [
@@ -30,24 +32,16 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
     ['User Experience', 'Graphic Designer', 'Web Designer']
   ];
 
-  // Seed data repeating UIUX Coven, Figma Buddies, and Adobe Expert perfectly
-  const communitiesList = [
-    { name: 'UIUX Coven', avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=120' },
-    { name: 'Figma Buddies', avatar: 'https://images.unsplash.com/photo-1628005182384-a83a8bd57fbe?q=80&w=120' },
-    { name: 'Adobe Expert', avatar: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=120' }
-  ];
-
-  // Generate 30 community cards matching the repeating pattern in the image
-  const displayCards = Array.from({ length: 30 }).map((_, idx) => {
-    const parentCom = communitiesList[idx % communitiesList.length];
-    return {
-      id: `sn-com-${idx}`,
-      name: parentCom.name,
-      avatar: parentCom.avatar,
-      desc: 'Figma Buddies is a group of designers who come together to learn, collaborate and share skills...more',
-      members: '256k members'
-    };
-  });
+  // Real communities from API
+  const displayCards = communities.length > 0
+    ? communities.map((c) => ({
+        id: c.id,
+        name: c.name,
+        avatar: c.avatar,
+        desc: c.description,
+        members: `${c.memberCount || 0} members`
+      }))
+    : [];
 
   return (
     <div className="p-10 text-left max-w-7xl mx-auto flex flex-col gap-8 bg-white font-sans" id="community-directory-root">

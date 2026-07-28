@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './lib/AuthContext';
+import { CommunitiesProvider } from './lib/CommunitiesContext';
+import { messagesApi } from './lib/api';
 import LandingPage from './components/LandingPage';
 import AuthFlow from './components/AuthFlow';
 import DashboardLayout from './components/DashboardLayout';
@@ -7,113 +10,111 @@ import CommunitySection from './components/CommunitySection';
 import CommunityDirectory from './components/CommunityDirectory';
 import MessagesSection from './components/MessagesSection';
 import { ActiveView, DashboardTab, UserProfile, ChatThread, ChatMessage } from './types';
-import { Layers, HelpCircle, Eye, MonitorPlay } from 'lucide-react';
 
-export default function App() {
+function AppContent() {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
   // Navigation & States
   const [activeView, setActiveView] = useState<ActiveView>(ActiveView.LANDING);
   const [activeTab, setActiveTab] = useState<DashboardTab>('dashboard');
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
-  
+
   // Direct Chat trigger parameters
   const [directChatUser, setDirectChatUser] = useState<string | undefined>(undefined);
   const [directChatAvatar, setDirectChatAvatar] = useState<string | undefined>(undefined);
 
-  // Lifted Chat Threads state to preserve chat messages on tab swaps
-  const [threads, setThreads] = useState<ChatThread[]>([
-    {
-      id: 't-1',
-      name: 'Afolabi Emmanuel',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-      lastMessage: 'Awesome workspace! Let us review the database schema tonight.',
-      timeString: '14:20',
-      category: 'chat',
-      messages: [
-        { id: 'm-1', sender: 'Afolabi Emmanuel', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120', content: "Hello! I am excited to kickstart this mock collaboration on Nailand workspace.", time: '14:10', isMe: false },
-        { id: 'm-2', sender: 'Me', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120', content: "Same here Afolabi! The Web3 peer design looks highly accurate and responsive.", time: '14:15', isMe: true },
-        { id: 'm-3', sender: 'Afolabi Emmanuel', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120', content: "Awesome workspace! Let us review the database schema tonight.", time: '14:20', isMe: false }
-      ]
-    },
-    {
-      id: 't-2',
-      name: 'Lola Adebinpe',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-      lastMessage: 'Attached the wireframe draft...',
-      timeString: 'Yesterday',
-      category: 'chat',
-      messages: [
-        { id: 'l-1', sender: 'Lola Adebinpe', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120', content: "Hey! Could you assist me with the React layouts frontend audit? I have attached PDF guidelines wireframes.", time: '18:30', isMe: false }
-      ]
-    },
-    {
-      id: 't-3',
-      name: 'Figma Buddies Community',
-      avatar: '🎨',
-      lastMessage: 'Victor O: check out our mobile landing dashboard...',
-      timeString: 'Yesterday',
-      category: 'community',
-      messages: [
-        { id: 'c-1', sender: 'Victor O.', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=80', content: "Hello Figma buddies! Welcome to the premium chat lobby.", time: '09:12', isMe: false }
-      ]
-    }
-  ]);
-
-  const [activeThreadId, setActiveThreadId] = useState<string>('t-1');
-
-  // Authenticated User profile
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    firstName: 'John',
-    secondName: 'Doe',
-    email: 'john.doe@nailand.com',
-    interests: ['Figma', 'UI/UX', 'Mobile Design'],
-    region: 'Africa'
-  });
-
-  // Prototype walkthrough floaty control tab
+  // Chat Threads state fetched from API
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string>('');
   const [showWalkthrough, setShowWalkthrough] = useState(true);
 
+  // Fetch threads when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      messagesApi.getThreads().then((res) => {
+        if (res.success && res.data) {
+          const mapped: ChatThread[] = res.data.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            avatar: t.avatar,
+            lastMessage: t.lastMessage || '',
+            timeString: t.timeString || '',
+            category: t.category === 'community' ? 'community' : 'chat',
+            messages: [],
+            isCommunity: t.isCommunity,
+            communityId: t.communityId,
+          }));
+          setThreads(mapped);
+          if (mapped.length > 0) setActiveThreadId(mapped[0].id);
+        }
+      });
+    }
+  }, [isAuthenticated]);
+
   // Handlers
-  const handleAuthSuccess = (profile: UserProfile) => {
-    setUserProfile(profile);
+  const handleAuthSuccess = () => {
     setSelectedCommunity(null);
     setActiveTab('dashboard');
     setActiveView(ActiveView.APP_LAYOUT);
   };
 
-  const handleSelectDirectChat = (personName: string, avatar: string) => {
+  const handleSelectDirectChat = async (personName: string, avatar: string) => {
     setDirectChatUser(personName);
     setDirectChatAvatar(avatar);
-    
-    // Check if thread already exists inside our lifted state
+
     const match = threads.find(t => t.name === personName);
     if (match) {
       setActiveThreadId(match.id);
     } else {
-      // Create new thread & prepend
-      const newTh: ChatThread = {
-        id: `t-${Date.now()}`,
+      // Create thread via API
+      const res = await messagesApi.createThread({
         name: personName,
         avatar: avatar || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=80',
-        lastMessage: 'Let us start chatting!',
-        timeString: 'Just now',
+        participantIds: [],
         category: 'chat',
-        messages: [
-          { id: `m-${Date.now()}`, sender: personName, avatar: avatar || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=80', content: `Hey! I received your ping to trade skills on NaiLand. How can I help?`, time: 'Just now', isMe: false }
-        ]
-      };
-      setThreads([newTh, ...threads]);
-      setActiveThreadId(newTh.id);
+      });
+      if (res.success && res.data) {
+        const newTh: ChatThread = {
+          id: res.data.id,
+          name: res.data.name,
+          avatar: res.data.avatar,
+          lastMessage: 'Let us start chatting!',
+          timeString: 'Just now',
+          category: 'chat',
+          messages: [],
+        };
+        setThreads(prev => [newTh, ...prev]);
+        setActiveThreadId(newTh.id);
+      }
     }
-    
     setActiveTab('messages');
   };
+
+  // Auto-redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && activeView === ActiveView.LANDING) {
+      setActiveView(ActiveView.APP_LAYOUT);
+    }
+  }, [isLoading, isAuthenticated, activeView]);
+
+  const handleLogout = () => {
+    logout();
+    setActiveView(ActiveView.LANDING);
+    setActiveTab('dashboard');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fdfcf9] flex items-center justify-center">
+        <div className="text-stone-400 font-mono text-xs animate-pulse">Loading NaiLand...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fdfcf9] relative text-stone-800" id="app-root-container">
       
-      {/* ========================================================== */}
-      {/* 🚀 PROTOTYPE WALKTHROUGH CONTROLLER FLOATING HEADER BAR    */}
-      {/* ========================================================== */}
+      {/* PROTOTYPE WALKTHROUGH CONTROLLER FLOATING HEADER BAR */}
       {showWalkthrough && (
         <div 
           className="bg-stone-900 border-b border-stone-800 text-stone-100 py-3.5 px-4 sticky top-0 z-50 text-xs shadow-md"
@@ -133,9 +134,7 @@ export default function App() {
               <span className="text-[10px] font-mono text-stone-500 uppercase">Presets:</span>
               
               <button 
-                onClick={() => {
-                  setActiveView(ActiveView.LANDING);
-                }}
+                onClick={() => setActiveView(ActiveView.LANDING)}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
                   ${activeView === ActiveView.LANDING 
                     ? 'bg-[#f8c21a] text-stone-950 font-black' 
@@ -145,11 +144,7 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => {
-                  // Blank form
-                  setUserProfile({ firstName: '', secondName: '', email: '', interests: [], region: '' });
-                  setActiveView(ActiveView.SIGN_UP);
-                }}
+                onClick={() => setActiveView(ActiveView.SIGN_UP)}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
                   ${activeView === ActiveView.SIGN_UP 
                     ? 'bg-[#f8c21a] text-stone-950 font-black' 
@@ -190,8 +185,6 @@ export default function App() {
                 onClick={() => {
                   setActiveView(ActiveView.APP_LAYOUT);
                   setActiveTab('messages');
-                  setDirectChatUser('Afolabi Emmanuel');
-                  setDirectChatAvatar('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120');
                 }}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
                   ${activeView === ActiveView.APP_LAYOUT && activeTab === 'messages'
@@ -213,9 +206,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ========================================================== */}
-      {/* 🔮 MAIN ACTIVE MOUNT DIRECTORY                             */}
-      {/* ========================================================== */}
+      {/* MAIN ACTIVE MOUNT DIRECTORY */}
       <div id="mount-view-container" className="relative">
         
         {/* VIEW 1: LANDING PAGE */}
@@ -250,26 +241,23 @@ export default function App() {
         )}
 
         {/* VIEW 3: IN-APP ACTIVE DASHBOARD LAYOUTS */}
-        {activeView === ActiveView.APP_LAYOUT && (
+        {activeView === ActiveView.APP_LAYOUT && user && (
           <DashboardLayout 
-            user={userProfile}
+            user={user}
             activeTab={activeTab}
             setActiveTab={(t) => {
               if (t === 'logout') {
-                setActiveView(ActiveView.LANDING);
+                handleLogout();
                 return;
               }
               setActiveTab(t);
               setSelectedCommunity(null);
             }}
-            onLogout={() => {
-              setActiveView(ActiveView.LANDING);
-            }}
+            onLogout={handleLogout}
           >
-            {/* Active Nested Tab rendering */}
             {activeTab === 'dashboard' && (
               <DashboardHome 
-                user={userProfile}
+                user={user}
                 onSelectCommunity={(comName) => {
                   setSelectedCommunity(comName);
                   setActiveTab('community');
@@ -341,5 +329,15 @@ export default function App() {
       </div>
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <CommunitiesProvider>
+        <AppContent />
+      </CommunitiesProvider>
+    </AuthProvider>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   MessageCircle, 
@@ -33,6 +33,8 @@ import {
   Trash2
 } from 'lucide-react';
 import { CommunityFeedPost, CollabOffer, SkillRequest } from '../types';
+import { useAuth } from '../lib/AuthContext';
+import { feedsApi } from '../lib/api';
 
 interface CommunitySectionProps {
   communityName: string;
@@ -48,6 +50,10 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   // Modals / Wizard states
   const [collabWizardStep, setCollabWizardStep] = useState<number>(0); // 0 means closed, 1-4 are pages
   const [isSkillRequestActive, setIsSkillRequestActive] = useState<boolean>(false);
+
+  // Fetch feeds when community changes
+  const [feeds, setFeeds] = useState<CommunityFeedPost[]>([]);
+  const [feedsLoading, setFeedsLoading] = useState(true);
 
   // Suggested community contacts for sidebar and details
   const communityMembers = [
@@ -137,41 +143,28 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     setTypedMessage('');
   };
 
-  // Default feeds data reflecting the image feeds layout
-  const [feeds, setFeeds] = useState<CommunityFeedPost[]>([
-    {
-      id: 'feed-1',
-      author: 'Afolabi Ola',
-      authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-      rating: 5,
-      timeAgo: '2 hours ago',
-      content: 'Hi folks, This is my exploration about creative digital agency i have worked with different agency but this is the results. I paired dark navy space aesthetics with glassmorphic dashboards. Let me know what you guys think about the layout pairing!',
-      likes: 12,
-      comments: 12,
-      shares: 32,
-      image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=800',
-      images: ['https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=800'],
-      attachmentTypes: ['image']
-    },
-    {
-      id: 'feed-2',
-      author: 'Afolabi Ola',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-      rating: 5,
-      timeAgo: '4 hours ago',
-      content: 'Figma templates for community dashboards updated! We created 12 component slots, built-in light/dark variables, and native UI tokens to assist the launch. Download the resource inside our Shared Files tab below.',
-      likes: 45,
-      comments: 8,
-      shares: 15,
-      image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=800',
-      images: [
-        'https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=800',
-        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800',
-        'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800'
-      ],
-      attachmentTypes: ['image', 'image', 'video']
-    }
-  ]);
+  // Fetch feeds from API
+  useEffect(() => {
+    feedsApi.getPosts(communityName).then((res) => {
+      if (res.success && res.data && res.data.length > 0) {
+        setFeeds(res.data.map((p: any) => ({
+          id: p.id,
+          author: p.authorId || 'User',
+          authorId: p.authorId,
+          authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          rating: 5,
+          timeAgo: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'recent',
+          content: p.content,
+          images: p.images || [],
+          attachmentTypes: p.attachmentTypes || [],
+          likes: p.likes || 0,
+          comments: p.comments || 0,
+          shares: p.shares || 0,
+        })));
+      }
+      setFeedsLoading(false);
+    });
+  }, [communityName]);
 
   const [newPostText, setNewPostText] = useState('');
   const [newPostImage, setNewPostImage] = useState(''); // Compatibility hook

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatThread, ChatMessage } from '../types';
+import { messagesApi } from '../lib/api';
 import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,6 +25,7 @@ export default function MessagesSection({
 }: MessagesSectionProps) {
   // Filter active chat threads Category
   const [activeCategory, setActiveCategory] = useState<'all' | 'community' | 'chat'>('all');
+  const [messagesLoading, setMessagesLoading] = useState(false);
   
   // Custom typing indicator tracker
   const [isTyping, setIsTyping] = useState<string | null>(null);
@@ -34,7 +36,6 @@ export default function MessagesSection({
   // Handle direct message pass on load and flush the router trigger params
   useEffect(() => {
     if (initialChatWith) {
-      // Find matching thread inside the lifted store
       const match = threads.find(t => t.name === initialChatWith);
       if (match) {
         setActiveThreadId(match.id);
@@ -42,6 +43,36 @@ export default function MessagesSection({
       clearDirectChatTrigger?.();
     }
   }, [initialChatWith, clearDirectChatTrigger]);
+
+  // Fetch messages when active thread changes
+  useEffect(() => {
+    if (!activeThreadId) return;
+    setMessagesLoading(true);
+    messagesApi.getMessages(activeThreadId).then((res) => {
+      if (res.success && res.data) {
+        setThreads(prev => prev.map(t => {
+          if (t.id === activeThreadId) {
+            return {
+              ...t,
+              messages: res.data.map((m: any) => ({
+                id: m.id,
+                threadId: m.threadId,
+                sender: m.sender || 'User',
+                senderId: m.senderId,
+                avatar: m.avatar || '',
+                content: m.content,
+                time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                isMe: m.senderId === localStorage.getItem('nailand_user_id'),
+                createdAt: m.createdAt,
+              })),
+            };
+          }
+          return t;
+        }));
+      }
+      setMessagesLoading(false);
+    });
+  }, [activeThreadId]);
 
   const [messageText, setMessageText] = useState('');
 
@@ -101,17 +132,21 @@ export default function MessagesSection({
     scrollToBottom('smooth');
   }, [activeThread?.messages?.length, isTyping]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim()) return;
 
     const currentThreadId = activeThreadId;
+    const textToSend = messageText;
 
+    // Optimistically add message to UI
     const newMsg: ChatMessage = {
       id: `m-${Date.now()}`,
+      threadId: currentThreadId,
       sender: 'Me',
+      senderId: 'me',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-      content: messageText,
+      content: textToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isMe: true
     };
@@ -120,7 +155,7 @@ export default function MessagesSection({
       if (t.id === currentThreadId) {
         return {
           ...t,
-          lastMessage: messageText,
+          lastMessage: textToSend,
           timeString: 'Just now',
           messages: [...t.messages, newMsg]
         };
@@ -129,6 +164,9 @@ export default function MessagesSection({
     }));
 
     setMessageText('');
+
+    // Send via API
+    await messagesApi.sendMessage(currentThreadId, textToSend);
 
     // Trigger typing simulator after 400ms
     setTimeout(() => {
