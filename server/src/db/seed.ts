@@ -147,7 +147,7 @@ async function seed() {
   // Direct chat between user 0 and user 1
   const [directThread] = await db.insert(chatThreads).values({
     name: `${createdUsers[1].firstName} ${createdUsers[1].secondName}`,
-    avatar: createdUsers[1].avatarUrl,
+    avatar: createdUsers[1].avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
     category: 'chat',
     lastMessage: 'Awesome workspace! Let us review the database schema tonight.',
     timeString: '14:20',

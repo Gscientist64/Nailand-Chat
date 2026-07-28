@@ -1,13 +1,11 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { generateToken, authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 

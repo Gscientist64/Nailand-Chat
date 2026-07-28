@@ -31,7 +31,7 @@ declare global {
 // Generate JWT token
 export function generateToken(payload: JwtPayload): string {
   const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as jwt.SignOptions);
 }
 
 // Verify JWT token
@@ -68,7 +68,15 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       return res.status(401).json({ success: false, error: 'User not found' });
     }
 
-    req.user = user;
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      secondName: user.secondName,
+      avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+      region: user.region || 'Africa',
+      interests: user.interests || [],
+    };
     next();
   } catch (error) {
     return res.status(401).json({ success: false, error: 'Invalid or expired token' });
@@ -98,7 +106,15 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
         .limit(1);
 
       if (user) {
-        req.user = user;
+        req.user = {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          secondName: user.secondName,
+          avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          region: user.region || 'Africa',
+          interests: user.interests || [],
+        };
       }
     }
   } catch {
