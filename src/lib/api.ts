@@ -15,7 +15,7 @@ interface ApiResponse<T = unknown> {
 }
 
 // Get stored JWT token
-function getToken(): string | null {
+export function getToken(): string | null {
   return localStorage.getItem('nailand_token');
 }
 

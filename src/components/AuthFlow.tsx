@@ -109,8 +109,6 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
       setTimeout(() => {
         setCurrentView(ActiveView.INTERESTS);
       }, 600);
-    } else {
-      setConfirmState('error');
     }
   };
 
