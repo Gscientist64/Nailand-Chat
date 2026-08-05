@@ -28,8 +28,30 @@ const httpServer = createServer(app);
 // ============================================================
 // Middleware
 // ============================================================
+// Normalize allowed origins: add https:// if missing, strip trailing slashes,
+// and support comma-separated values (e.g. local + production).
+function normalizeOrigin(origin: string): string {
+  let o = origin.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(o)) {
+    o = `https://${o}`;
+  }
+  return o;
+}
+
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow non-browser requests (curl, health checks, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
