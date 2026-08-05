@@ -79,6 +79,9 @@ export const authApi = {
   verifyCode: (data: { email: string; code: string }) =>
     request('POST', '/api/auth/verify-code', data, { auth: false }),
 
+  googleLogin: (idToken: string) =>
+    request<{ user: any; token: string }>('POST', '/api/auth/google', { idToken }, { auth: false }),
+
   getMe: () => request<any>('GET', '/api/auth/me'),
 
   forgotPassword: (data: { email: string }) =>

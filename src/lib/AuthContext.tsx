@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi, setToken, clearToken, getToken } from './api';
+import { getGoogleIdToken, isFirebaseConfigured } from './firebase';
 import type { UserProfile } from '../../shared/types';
 
 interface AuthContextValue {
@@ -10,6 +11,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<string | null>;
   signup: (data: { firstName: string; secondName: string; email: string; password: string; interests?: string[]; region?: string }) => Promise<string | null>;
   verifyCode: (email: string, code: string) => Promise<string | null>;
+  googleSignIn: () => Promise<string | null>;
+  isGoogleEnabled: boolean;
   logout: () => void;
   updateUser: (data: Partial<UserProfile>) => void;
 }
@@ -95,6 +98,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.error || 'Verification failed';
   }, []);
 
+  const googleSignIn = useCallback(async (): Promise<string | null> => {
+    try {
+      // 1. Get Google ID token from Firebase
+      const idToken = await getGoogleIdToken();
+
+      // 2. Send it to our backend for verification
+      const res = await authApi.googleLogin(idToken);
+      if (res.success && res.data) {
+        setToken(res.data.token);
+        setTokenState(res.data.token);
+        setUser({
+          id: res.data.user.id,
+          firstName: res.data.user.firstName,
+          secondName: res.data.user.secondName,
+          email: res.data.user.email,
+          interests: res.data.user.interests || [],
+          region: res.data.user.region || 'Africa',
+          avatarUrl: res.data.user.avatarUrl,
+        });
+        localStorage.setItem('nailand_user_id', res.data.user.id);
+        return null;
+      }
+      return res.error || 'Google sign-in failed';
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Google sign-in failed';
+    }
+  }, []);
+
   const logout = useCallback(() => {
     clearToken();
     setTokenState(null);
@@ -116,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         signup,
         verifyCode,
+        googleSignIn,
+        isGoogleEnabled: isFirebaseConfigured,
         logout,
         updateUser,
       }}

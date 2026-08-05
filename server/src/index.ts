@@ -9,6 +9,7 @@ import { db } from './db/index.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
+import authGoogleRoutes from './routes/auth-google.js';
 import userRoutes from './routes/users.js';
 import communityRoutes from './routes/communities.js';
 import messageRoutes from './routes/messages.js';
@@ -50,6 +51,7 @@ app.get('/api/health', (_req, res) => {
 // API Routes
 // ============================================================
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', authGoogleRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/messages', messageRoutes);
