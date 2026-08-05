@@ -36,3 +36,7 @@ coverage/
 
 # Drizzle meta
 drizzle/meta/
+
+# Legacy prototype folders (superseded by src/ + server/)
+client/
+Nailand_Prod/
