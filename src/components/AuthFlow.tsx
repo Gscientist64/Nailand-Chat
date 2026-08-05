@@ -30,11 +30,11 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Login Inputs
-  const [loginEmail, setLoginEmail] = useState('afolabi@nailand.com');
-  const [loginPassword, setLoginPassword] = useState('SuperSecretSecure123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // Confirmation Code Inputs
-  const [code, setCode] = useState(['4', '5', '8', '2']);
+  const [code, setCode] = useState(['', '', '', '']);
   const [confirmState, setConfirmState] = useState<'success' | 'error'>('success');
   const [resentNotice, setResentNotice] = useState(false);
   const handleCodeChange = (index: number, val: string) => {
@@ -50,7 +50,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   };
 
   // Accordion Interests State
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(['Figma', 'UI/UX', 'Mobile Product Design']);
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [expandedSection, setExpandedSection] = useState<string>('Data Analyst');
 
   const toggleInterest = (interest: string) => {
