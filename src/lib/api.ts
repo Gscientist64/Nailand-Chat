@@ -107,6 +107,10 @@ export const communitiesApi = {
   create: (data: { name: string; description: string; avatar: string; tags?: string[] }) =>
     request<any>('POST', '/api/communities', data),
   join: (id: string) => request<any>('POST', `/api/communities/${id}/join`),
+  my: () => request<any[]>('GET', '/api/communities/my'),
+  trending: (params?: { region?: string; limit?: number }) =>
+    request<any[]>('GET', `/api/communities/trending?limit=${params?.limit || 20}${params?.region ? `&region=${params.region}` : ''}`),
+  search: (q: string) => request<any[]>('GET', `/api/communities/search?q=${encodeURIComponent(q)}`),
 };
 
 // ============================================================
@@ -119,6 +123,35 @@ export const messagesApi = {
     request<any>('POST', '/api/messages/threads', data),
   sendMessage: (threadId: string, content: string) =>
     request<any>('POST', `/api/messages/threads/${threadId}/messages`, { content }),
+  markThreadRead: (threadId: string) => request<any>('POST', `/api/messages/threads/${threadId}/read`),
+  unreadCount: () => request<{ count: number }>('GET', '/api/messages/unread-count'),
+};
+
+// ============================================================
+// Notifications API
+// ============================================================
+export const notificationsApi = {
+  list: () => request<any[]>('GET', '/api/notifications'),
+  unreadCount: () => request<{ count: number }>('GET', '/api/notifications/unread-count'),
+  markRead: (id: string) => request<any>('POST', `/api/notifications/${id}/read`),
+  markAllRead: () => request<any>('POST', '/api/notifications/read-all'),
+};
+
+// ============================================================
+// Map Pins API
+// ============================================================
+export const mapPinsApi = {
+  list: () => request<any[]>('GET', '/api/map-pins'),
+  create: (data: { title: string; description?: string; top?: string; left?: string; totalThreads?: number; isLocked?: boolean; communityId?: string }) =>
+    request<any>('POST', '/api/map-pins', data),
+};
+
+// ============================================================
+// Dashboard / Search API
+// ============================================================
+export const dashboardApi = {
+  stats: () => request<any>('GET', '/api/stats'),
+  searchUsers: (q: string) => request<any[]>('GET', `/api/search/users?q=${encodeURIComponent(q)}`),
 };
 
 // ============================================================

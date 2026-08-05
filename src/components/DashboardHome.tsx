@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useCommunities } from '../lib/CommunitiesContext';
-import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock } from 'lucide-react';
+import { dashboardApi, mapPinsApi } from '../lib/api';
+import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock, Rocket, Users2, MessageCircle, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DashboardHomeProps {
@@ -14,6 +15,23 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
   const { isAuthenticated } = useAuth();
   const { communities, isLoading } = useCommunities();
   const [activeRegion, setActiveRegion] = useState('Creative');
+
+  // Dashboard stats from API
+  const [stats, setStats] = useState<{ totalUsers: number; totalCommunities: number; totalCollabs: number; totalMessages: number; totalMemberships: number; totalSkillRequests: number } | null>(null);
+
+  // Interactive map pins from API
+  const [mapPins, setMapPins] = useState<any[]>([]);
+  const [hoveredPin, setHoveredPin] = useState<string | null>(null);
+
+  // Fetch stats + map pins
+  useEffect(() => {
+    dashboardApi.stats().then((res) => {
+      if (res.success && res.data) setStats(res.data);
+    });
+    mapPinsApi.list().then((res) => {
+      if (res.success && res.data) setMapPins(res.data);
+    });
+  }, []);
 
   // Suggested region pills structure
   const suggestedRegions = [
@@ -33,7 +51,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     avatar: c.avatar,
     rating: 4.5,
     desc: c.description.slice(0, 80) + '...',
-    engagement: `${c.memberCount || 0}k members`
+    engagement: `${c.memberCount || 0} members`
   }));
 
   // Skills needed grid from communities
@@ -46,19 +64,49 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     compensation: `Join ${c.memberCount || 0} members`
   }));
 
-  // Coordinate program prompts to overlay on map
-  const programPrompts = [
-    { id: 1, top: '18%', left: '27%', totalThreads: 9, isLocked: false },
-    { id: 2, top: '32%', left: '64%', totalThreads: null, isLocked: true },
-    { id: 3, top: '38%', left: '18%', totalThreads: null, isLocked: true },
-    { id: 4, top: '41%', left: '47%', totalThreads: 9, isLocked: false },
-    { id: 5, top: '51%', left: '22%', totalThreads: null, isLocked: true },
-    { id: 6, top: '55%', left: '66%', totalThreads: 9, isLocked: false }
-  ];
+  // Interactive map pins (fallback to empty; data comes from API)
+  const programPrompts = mapPins.map((p) => ({
+    id: p.id,
+    top: p.top || '50%',
+    left: p.left || '50%',
+    totalThreads: p.totalThreads,
+    isLocked: p.isLocked,
+    title: p.title,
+    description: p.description,
+    communityId: p.communityId,
+  }));
+
+  // Stats display config
+  const statCards = stats ? [
+    { label: 'Community Members', value: stats.totalMemberships, icon: Users2, color: 'text-[#FFB300]' },
+    { label: 'Active Collabs', value: stats.totalCollabs, icon: Rocket, color: 'text-[#FF5722]' },
+    { label: 'Skills Exchanged', value: stats.totalSkillRequests, icon: Award, color: 'text-[#1E88E5]' },
+    { label: 'Messages Sent', value: stats.totalMessages, icon: MessageCircle, color: 'text-[#4CAF50]' },
+  ] : [];
 
   return (
     <div className="p-10 text-left max-w-7xl mx-auto flex flex-col gap-8 font-sans bg-white" id="dashboard-main-content">
-      
+
+      {/* SECTION 0: DASHBOARD STATS */}
+      {statCards.length > 0 && (
+        <section id="sec-dashboard-stats" className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {statCards.map((s) => {
+            const IconComp = s.icon;
+            return (
+              <div key={s.label} className="bg-white border border-[#EBEBEB] rounded-2xl p-4 flex items-center gap-3.5 hover:shadow-md transition" id={`stat-card-${s.label}`}>
+                <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                  <IconComp className={`w-5 h-5 ${s.color}`} style={{ strokeWidth: 2 }} />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-xl font-bold text-stone-900 leading-tight">{s.value.toLocaleString()}</span>
+                  <span className="text-[10.5px] text-stone-400 font-medium">{s.label}</span>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
+
       {/* SECTION 1: SUGGESTED REGIONS */}
       <section id="sec-suggested-regions" className="flex flex-col gap-3.5">
         <h3 className="text-stone-900 font-sans font-semibold text-base tracking-tight" id="title-suggested-regions">
@@ -179,58 +227,64 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
             <path d="M150 120 L400 240 M420 240 L600 150 M620 150 L800 350 M120 220 L320 380" stroke="#FF9800" strokeWidth="1.5" strokeDasharray="4,4" />
           </svg>
 
-          {/* Interactive floating coordinates overlays on map exactly as layout */}
-          {programPrompts.map((bubble) => (
-            <div
-              key={bubble.id}
-              className="absolute z-10 font-sans transition-all duration-300 hover:scale-105 select-none"
-              style={{ top: bubble.top, left: bubble.left }}
-              id={`program-prompt-bubble-${bubble.id}`}
-            >
-              {/* Inner Prompt Bubble container resembling screenshot */}
-              <div 
-                className="bg-white/95 backdrop-blur-sm border border-[#EBEBEB] rounded-2xl flex items-center justify-between shadow-md cursor-pointer hover:border-stone-800 transition"
-                style={{
-                  width: '280px',
-                  padding: '10px 14px',
-                  gap: '10px'
-                }}
+          {/* Interactive floating coordinates overlays on map — click to open */}
+          {programPrompts.map((bubble) => {
+            const community = bubble.communityId
+              ? communities.find((c) => c.id === bubble.communityId)
+              : undefined;
+            const isHovered = hoveredPin === bubble.id;
+            return (
+              <div
+                key={bubble.id}
+                className="absolute z-10 font-sans transition-all duration-300 hover:scale-105 select-none"
+                style={{ top: bubble.top, left: bubble.left }}
+                id={`program-prompt-bubble-${bubble.id}`}
               >
-                {/* Rocket avatar box */}
-                <div className="flex items-center gap-3 overflow-hidden flex-1">
-                  <div className="w-10 h-10 rounded-full bg-[#1A237E] flex items-center justify-center shrink-0">
-                    {/* Tiny rocket symbol inside */}
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 11.052 1.32c-.015-.008-.031-.013-.046-.017l-.047-.014a.75.75 0 010-1.269z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8a2.25 2.25 0 00-2.25-2.25H2.69a6 6 0 017.38-5.84l.69.11a2.25 2.25 0 011.83 2.22v3.07a2.25 2.25 0 002.25 2.25h1.12c.98 0 1.83-.63 2.14-1.56l.11-.31a2.25 2.25 0 012.22-1.83h3.07a2.25 2.25 0 002.25-2.25v-1.12c0-.98-.63-1.83-1.56-2.14l-.31-.11a2.25 2.25 0 01-1.83-2.22V3.69a2.25 2.25 0 00-2.25-2.25h-1.12c-.98 0-1.83.63-2.14 1.56l-.11.31a2.25 2.25 0 01-2.22 1.83H14.37a6 6 0 012.63 9.4z" />
-                    </svg>
+                <div
+                  onMouseEnter={() => setHoveredPin(bubble.id)}
+                  onMouseLeave={() => setHoveredPin(null)}
+                  onClick={() => {
+                    if (bubble.isLocked) return;
+                    if (community) {
+                      onSelectCommunity(community.name);
+                    } else if (bubble.title) {
+                      onSelectDirectChat(bubble.title, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120');
+                    }
+                  }}
+                  className={`bg-white/95 backdrop-blur-sm border rounded-2xl flex items-center justify-between shadow-md cursor-pointer transition
+                    ${bubble.isLocked ? 'border-[#EBEBEB] opacity-80' : isHovered ? 'border-stone-800 scale-[1.03] shadow-lg' : 'border-[#EBEBEB] hover:border-stone-800'}`}
+                  style={{ width: '280px', padding: '10px 14px', gap: '10px' }}
+                  title={bubble.isLocked ? 'Locked — join related communities to unlock' : 'Click to explore'}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${bubble.isLocked ? 'bg-stone-400' : 'bg-[#1A237E]'}`}>
+                      <Rocket className="w-5 h-5 text-white" style={{ strokeWidth: 2 }} />
+                    </div>
+
+                    <div className="flex flex-col text-left overflow-hidden">
+                      <span className="font-sans font-bold text-xs text-stone-900 leading-tight truncate">{bubble.title || 'Program Prompt'}</span>
+                      <span className="text-[10.5px] text-stone-400 font-sans truncate pr-1">{bubble.description || 'Tap to explore this coordinate'}</span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col text-left overflow-hidden">
-                    <span className="font-sans font-bold text-xs text-stone-900 leading-tight">Program Prompt</span>
-                    <span className="text-[10.5px] text-stone-400 font-sans truncate pr-1">Let's discuss computer language beyo...</span>
-                  </div>
+                  {bubble.totalThreads != null && !bubble.isLocked ? (
+                    <div className="w-6 h-6 rounded-full bg-stone-900 flex items-center justify-center shrink-0">
+                      <span className="text-[10px] text-white font-mono font-bold">{bubble.totalThreads}</span>
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-[#FFE082] flex items-center justify-center shrink-0">
+                      <Lock className="w-3.5 h-3.5 text-[#E65100]" style={{ strokeWidth: 2.5 }} />
+                    </div>
+                  )}
                 </div>
 
-                {/* Status indicator indicator element on right */}
-                {bubble.totalThreads !== null ? (
-                  <div className="w-6 h-6 rounded-full bg-stone-900 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] text-white font-mono font-bold">{bubble.totalThreads}</span>
-                  </div>
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-[#FFE082] flex items-center justify-center shrink-0">
-                    <Lock className="w-3.5 h-3.5 text-[#E65100]" style={{ strokeWidth: 2.5 }} />
-                  </div>
-                )}
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
+                  <span className="w-[1.5px] h-6 bg-[#FF9800]"></span>
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-md animate-pulse ${bubble.isLocked ? 'bg-[#FFB300]' : 'bg-[#FF9800]'}`}></span>
+                </div>
               </div>
-
-              {/* Glowing anchor map pinpoint pointer below bubble */}
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-                <span className="w-[1.5px] h-6 bg-[#FF9800]"></span>
-                <span className="w-3.5 h-3.5 bg-[#FF9800] rounded-full border-2 border-white shadow-md animate-pulse"></span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Right vertical cosmetic scrollbar track mimicking screenshot */}
           <div className="absolute top-1/4 bottom-1/4 right-3.5 w-1.5 bg-stone-200/50 rounded-full overflow-hidden" id="map-mock-scroll">

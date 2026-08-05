@@ -14,6 +14,9 @@ import communityRoutes from './routes/communities.js';
 import messageRoutes from './routes/messages.js';
 import feedRoutes from './routes/feeds.js';
 import taskRoutes from './routes/tasks.js';
+import notificationRoutes from './routes/notifications.js';
+import mapPinRoutes from './routes/map-pins.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 // WebSocket
 import { setupWebSocket } from './ws/chat.js';
@@ -52,6 +55,9 @@ app.use('/api/communities', communityRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/feeds', feedRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/map-pins', mapPinRoutes);
+app.use('/api', dashboardRoutes);
 
 // ============================================================
 // 404 Handler

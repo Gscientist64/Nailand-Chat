@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { communities, communityMembers, chatThreads, threadParticipants } from '../db/schema.js';
+import { communities, communityMembers, chatThreads, threadParticipants, users } from '../db/schema.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike } from 'drizzle-orm';
 
 const router = Router();
 
@@ -22,6 +22,90 @@ router.get('/', async (_req: Request, res: Response) => {
     return res.json({ success: true, data: allCommunities });
   } catch (error) {
     console.error('List communities error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/communities/search?q= — Search communities by name/tags
+// ============================================================
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const q = (req.query.q as string || '').trim();
+    if (!q) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const results = await db
+      .select()
+      .from(communities)
+      .where(ilike(communities.name, `%${q}%`))
+      .orderBy(desc(communities.memberCount))
+      .limit(20);
+
+    return res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('Search communities error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/communities/my — Communities the current user belongs to
+// ============================================================
+router.get('/my', authenticate, async (req: Request, res: Response) => {
+  try {
+    const myRows = await db
+      .select({
+        communityId: communityMembers.communityId,
+        role: communityMembers.role,
+        joinedAt: communityMembers.joinedAt,
+      })
+      .from(communityMembers)
+      .where(eq(communityMembers.userId, req.user!.id));
+
+    if (myRows.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const ids = myRows.map((r) => r.communityId);
+    const myCommunities = await db
+      .select()
+      .from(communities)
+      .where(sql`${communities.id} = ANY(${ids})`)
+      .orderBy(desc(communities.memberCount));
+
+    return res.json({
+      success: true,
+      data: myCommunities.map((c) => {
+        const membership = myRows.find((r) => r.communityId === c.id);
+        return { ...c, role: membership?.role, joinedAt: membership?.joinedAt, isMember: true };
+      }),
+    });
+  } catch (error) {
+    console.error('My communities error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/communities/trending — Trending communities (optionally by region)
+// ============================================================
+router.get('/trending', async (req: Request, res: Response) => {
+  try {
+    const region = (req.query.region as string) || undefined;
+    const limit = parseInt((req.query.limit as string) || '20', 10);
+
+    let query = db
+      .select()
+      .from(communities)
+      .orderBy(desc(communities.memberCount))
+      .limit(limit);
+
+    const trending = await query;
+    return res.json({ success: true, data: trending });
+  } catch (error) {
+    console.error('Trending communities error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

@@ -13,20 +13,27 @@ export enum ActiveView {
 export type DashboardTab = 'dashboard' | 'messages' | 'community' | 'help' | 'logout';
 
 export interface UserProfile {
+  id: string;
   firstName: string;
   secondName: string;
   email: string;
   interests: string[];
   region: string;
+  avatarUrl?: string;
+  createdAt?: string;
 }
 
 export interface ChatMessage {
   id: string;
+  threadId?: string;
   sender: string;
+  senderId?: string;
   avatar: string;
   content: string;
   time: string;
   isMe: boolean;
+  isRead?: boolean;
+  createdAt?: string;
 }
 
 export interface ChatThread {
@@ -38,6 +45,9 @@ export interface ChatThread {
   category: 'all' | 'community' | 'chat';
   messages: ChatMessage[];
   status?: string;
+  unreadCount?: number;
+  isCommunity?: boolean;
+  communityId?: string;
 }
 
 export interface SkillNeedCard {

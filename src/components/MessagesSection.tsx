@@ -124,6 +124,16 @@ export default function MessagesSection({
   // Find active thread
   const activeThread = threads.find(t => t.id === activeThreadId) || threads[0];
 
+  // Mark thread as read when opened
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const thread = threads.find((t) => t.id === activeThreadId);
+    if (thread && thread.unreadCount && thread.unreadCount > 0) {
+      messagesApi.markThreadRead(activeThreadId);
+      setThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, unreadCount: 0 } : t));
+    }
+  }, [activeThreadId]);
+
   // Scroll to bottom helper
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -175,11 +185,18 @@ export default function MessagesSection({
     await messagesApi.sendMessage(currentThreadId, textToSend);
   };
 
+  // Read/Unread filter state
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
+
   // Filter threads
   const filteredThreads = threads.filter(t => {
-    if (activeCategory === 'all') return true;
-    return t.category === activeCategory;
+    if (activeCategory !== 'all' && t.category !== activeCategory) return false;
+    if (readFilter === 'unread') return (t.unreadCount || 0) > 0;
+    if (readFilter === 'read') return !(t.unreadCount || 0) > 0;
+    return true;
   });
+
+  const totalUnread = threads.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
 
   return (
     <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-60px)] md:h-[calc(100vh-60px)] font-sans" id="messages-section-root">
@@ -215,12 +232,35 @@ export default function MessagesSection({
               Direct Chats
             </button>
           </div>
+
+          {/* Read/Unread filter row */}
+          <div className="flex items-center gap-1.5" id="read-filter-row">
+            <button
+              onClick={() => setReadFilter('all')}
+              className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition cursor-pointer ${readFilter === 'all' ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setReadFilter('unread')}
+              className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition cursor-pointer flex items-center gap-1 ${readFilter === 'unread' ? 'bg-[#E53935] text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
+            >
+              Unread {totalUnread > 0 && <span className="text-[8px] font-mono">({totalUnread})</span>}
+            </button>
+            <button
+              onClick={() => setReadFilter('read')}
+              className={`px-2.5 py-1 rounded-full text-[9px] font-bold transition cursor-pointer ${readFilter === 'read' ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
+            >
+              Read
+            </button>
+          </div>
         </div>
 
         {/* List of active threads */}
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1 text-left" id="threads-scrollable">
           {filteredThreads.map((thread) => {
             const isActive = thread.id === activeThreadId;
+            const hasUnread = (thread.unreadCount || 0) > 0;
             return (
               <div
                 key={thread.id}
@@ -228,11 +268,11 @@ export default function MessagesSection({
                 className={`p-3.5 rounded-2xl flex gap-3 cursor-pointer select-none transition-all duration-300
                   ${isActive 
                     ? 'bg-amber-50/60 border border-amber-200/50 shadow-sm' 
-                    : 'hover:bg-stone-50 border border-transparent'}`}
+                    : hasUnread ? 'bg-amber-50/20 border border-amber-100' : 'hover:bg-stone-50 border border-transparent'}`}
                 id={`thread-item-${thread.id}`}
               >
                 {/* Thread Avatar graphic */}
-                <div className="shrink-0" id={`thread-avatar-frame-${thread.id}`}>
+                <div className="shrink-0 relative" id={`thread-avatar-frame-${thread.id}`}>
                   {thread.avatar.startsWith('http') ? (
                     <img className="w-10 h-10 rounded-full object-cover border border-stone-200" src={thread.avatar} alt={thread.name} referrerPolicy="no-referrer" />
                   ) : (
@@ -240,15 +280,20 @@ export default function MessagesSection({
                       {thread.avatar}
                     </div>
                   )}
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#E53935] rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold text-white">
+                      {thread.unreadCount}
+                    </span>
+                  )}
                 </div>
 
                 {/* Text descripts */}
                 <div className="flex-1 overflow-hidden" id={`thread-meta-desc-${thread.id}`}>
                   <div className="flex justify-between items-baseline mb-0.5" id="thread-nm-row">
-                    <span className="font-serif font-bold text-xs text-stone-900 truncate">{thread.name}</span>
+                    <span className={`text-xs truncate ${hasUnread ? 'font-serif font-extrabold text-stone-950' : 'font-serif font-bold text-stone-900'}`}>{thread.name}</span>
                     <span className="text-[8px] font-mono text-stone-400 shrink-0">{thread.timeString}</span>
                   </div>
-                  <p className="text-[10px] text-stone-400 truncate leading-relaxed" id={`thread-last-msg-${thread.id}`}>
+                  <p className={`text-[10px] truncate leading-relaxed ${hasUnread ? 'text-stone-600 font-medium' : 'text-stone-400'}`} id={`thread-last-msg-${thread.id}`}>
                     {thread.lastMessage}
                   </p>
                 </div>

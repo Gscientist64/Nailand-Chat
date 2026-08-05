@@ -136,6 +136,7 @@ export const chatMessages = pgTable('chat_messages', {
   threadId: uuid('thread_id').notNull().references(() => chatThreads.id, { onDelete: 'cascade' }),
   senderId: uuid('sender_id').notNull().references(() => users.id),
   content: text('content').notNull(),
+  isRead: boolean('is_read').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
   index('messages_thread_idx').on(table.threadId),
@@ -256,5 +257,54 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   creator: one(users, {
     fields: [tasks.createdBy],
     references: [users.id],
+  }),
+}));
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 50 }).default('info'),
+  title: varchar('title', { length: 300 }).notNull(),
+  body: text('body').default(''),
+  link: varchar('link', { length: 500 }),
+  isRead: boolean('is_read').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('notifications_user_idx').on(table.userId),
+  index('notifications_read_idx').on(table.isRead),
+]);
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================
+// MAP PINS
+// ============================================================
+export const mapPins = pgTable('map_pins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description').default(''),
+  top: varchar('top', { length: 20 }).default('50%'),
+  left: varchar('left', { length: 20 }).default('50%'),
+  totalThreads: integer('total_threads').default(0),
+  isLocked: boolean('is_locked').default(false),
+  communityId: uuid('community_id').references(() => communities.id, { onDelete: 'set null' }),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('map_pins_community_idx').on(table.communityId),
+]);
+
+export const mapPinsRelations = relations(mapPins, ({ one }) => ({
+  community: one(communities, {
+    fields: [mapPins.communityId],
+    references: [communities.id],
   }),
 }));

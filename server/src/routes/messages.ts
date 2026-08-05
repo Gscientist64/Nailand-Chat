@@ -4,12 +4,12 @@ import { db } from '../db/index.js';
 import { chatThreads, chatMessages, threadParticipants, users } from '../db/schema.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 
 const router = Router();
 
 // ============================================================
-// GET /api/messages/threads — Get all threads for current user
+// GET /api/messages/threads — Get all threads for current user (with unread counts)
 // ============================================================
 router.get('/threads', authenticate, async (req: Request, res: Response) => {
   try {
@@ -33,9 +33,66 @@ router.get('/threads', authenticate, async (req: Request, res: Response) => {
     // Filter to only user's threads
     const userThreads = threads.filter((t) => threadIds.includes(t.id));
 
-    return res.json({ success: true, data: userThreads });
+    // Compute unread counts per thread (messages not sent by me and not read)
+    const unreadCounts: Record<string, number> = {};
+    for (const t of userThreads) {
+      const unread = await db
+        .select({ id: chatMessages.id })
+        .from(chatMessages)
+        .where(and(
+          eq(chatMessages.threadId, t.id),
+          eq(chatMessages.isRead, false),
+          sql`${chatMessages.senderId} != ${req.user!.id}`
+        ));
+      unreadCounts[t.id] = unread.length;
+    }
+
+    return res.json({
+      success: true,
+      data: userThreads.map((t) => ({ ...t, unreadCount: unreadCounts[t.id] || 0 })),
+    });
   } catch (error) {
     console.error('Get threads error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/messages/threads/:id/read — Mark all messages in a thread as read
+// ============================================================
+router.post('/threads/:id/read', authenticate, async (req: Request, res: Response) => {
+  try {
+    await db
+      .update(chatMessages)
+      .set({ isRead: true })
+      .where(and(
+        eq(chatMessages.threadId, req.params.id),
+        sql`${chatMessages.senderId} != ${req.user!.id}`
+      ));
+
+    return res.json({ success: true, message: 'Thread marked as read' });
+  } catch (error) {
+    console.error('Mark thread read error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/messages/unread-count — Total unread messages across threads
+// ============================================================
+router.get('/unread-count', authenticate, async (req: Request, res: Response) => {
+  try {
+    const rows = await db
+      .select({ id: chatMessages.id })
+      .from(chatMessages)
+      .where(and(
+        eq(chatMessages.isRead, false),
+        sql`${chatMessages.senderId} != ${req.user!.id}`
+      ));
+
+    return res.json({ success: true, data: { count: rows.length } });
+  } catch (error) {
+    console.error('Unread messages error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

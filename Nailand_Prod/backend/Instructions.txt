@@ -1,0 +1,4 @@
+cd backend
+python run.py
+
+visit http://localhost:8000/docs to see api's

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Star, Check, Plus } from 'lucide-react';
 import { useCommunities } from '../lib/CommunitiesContext';
+import { communitiesApi } from '../lib/api';
 
 interface CommunityDirectoryProps {
   onSelectCommunity: (comName: string) => void;
@@ -8,7 +9,39 @@ interface CommunityDirectoryProps {
 
 export default function CommunityDirectory({ onSelectCommunity }: CommunityDirectoryProps) {
   const [activeRegion, setActiveRegion] = useState('Creative');
-  const { communities, isLoading } = useCommunities();
+  const [activeTab, setActiveTab] = useState<'your' | 'find'>('find');
+  const { communities, isLoading, refresh } = useCommunities();
+
+  // My communities fetched from API
+  const [myCommunities, setMyCommunities] = useState<any[]>([]);
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+
+  const loadMyCommunities = () => {
+    communitiesApi.my().then((res) => {
+      if (res.success && res.data) {
+        setMyCommunities(res.data);
+        setJoinedIds(new Set(res.data.map((c: any) => c.id)));
+      }
+    });
+  };
+
+  useEffect(() => {
+    loadMyCommunities();
+  }, []);
+
+  const handleJoin = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (joinedIds.has(id) || joiningId) return;
+    setJoiningId(id);
+    const err = await communitiesApi.join(id).then((r) => (r.success ? null : r.error));
+    setJoiningId(null);
+    if (!err) {
+      setJoinedIds((prev) => new Set(prev).add(id));
+      loadMyCommunities();
+      refresh();
+    }
+  };
 
   // Suggested region pills structure matching DashboardHome for alignment
   const suggestedRegions = [
@@ -95,10 +128,36 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
         </div>
       </section>
 
-      {/* SECTION 3: COMMUNITIES GRID */}
+      {/* SECTION 3: YOUR / FIND COMMUNITIES TOGGLE */}
+      <section id="sec-dir-toggle" className="flex items-center gap-2 border border-stone-200 rounded-xl p-1 w-fit bg-stone-50/60">
+        <button
+          onClick={() => setActiveTab('your')}
+          className={`px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer
+            ${activeTab === 'your' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-800'}`}
+          id="dir-tab-your"
+        >
+          Your Communities {myCommunities.length > 0 && <span className="ml-1 text-[10px] text-amber-600">({myCommunities.length})</span>}
+        </button>
+        <button
+          onClick={() => setActiveTab('find')}
+          className={`px-5 py-2 rounded-lg text-xs font-bold transition cursor-pointer
+            ${activeTab === 'find' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-800'}`}
+          id="dir-tab-find"
+        >
+          Find Communities
+        </button>
+      </section>
+
+      {/* SECTION 4: COMMUNITIES GRID */}
       <section id="sec-dir-grid" className="flex flex-col gap-4">
+        {activeTab === 'your' && myCommunities.length === 0 && (
+          <div className="bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-10 text-center text-sm text-stone-400">
+            You haven't joined any communities yet. Switch to <strong className="text-stone-600">Find Communities</strong> to explore!
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="dir-communities-grid-box">
-          {displayCards.map((card) => (
+          {(activeTab === 'your' ? myCommunities : displayCards).map((card) => (
             <div
               key={card.id}
               className="bg-white border border-[#EBEBEB] p-5 rounded-2xl flex flex-col justify-between text-left transition duration-300 hover:shadow-md"
@@ -131,13 +190,26 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
                   </div>
 
                   {/* "Explore" orange/yellow text label linked to community render */}
-                  <button 
-                    onClick={() => onSelectCommunity(card.name)}
-                    className="text-[13px] font-sans font-bold text-[#FFB300] hover:text-[#FFA000] hover:underline cursor-pointer transition select-none"
-                    id={`dir-action-lbl-${card.id}`}
-                  >
-                    Explore
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={(e) => handleJoin(card.id, e)}
+                      disabled={joinedIds.has(card.id) || joiningId === card.id}
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full transition cursor-pointer flex items-center gap-1
+                        ${joinedIds.has(card.id)
+                          ? 'bg-emerald-50 text-emerald-600 cursor-default'
+                          : 'bg-stone-900 text-white hover:bg-stone-700'}`}
+                      id={`dir-join-btn-${card.id}`}
+                    >
+                      {joinedIds.has(card.id) ? <><Check className="w-3 h-3" /> Joined</> : <><Plus className="w-3 h-3" /> Join</>}
+                    </button>
+                    <button
+                      onClick={() => onSelectCommunity(card.name)}
+                      className="text-[13px] font-sans font-bold text-[#FFB300] hover:text-[#FFA000] hover:underline cursor-pointer transition select-none"
+                      id={`dir-action-lbl-${card.id}`}
+                    >
+                      Explore
+                    </button>
+                  </div>
                 </div>
 
                 {/* Body paragraph */}

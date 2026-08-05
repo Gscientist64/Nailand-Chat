@@ -1,0 +1,15 @@
+#STEPS TO PUSH TO GITHUB TO MY BRANCH
+
+# Navigate to the repo
+cd /c/Nailand_New/Nailand-Metaverse
+
+# Pull latest changes (if any)
+git pull origin isaac-backend
+
+# Copy updated files
+cp -r /c/Nailand_New/backend/* ./backend-isaac/
+
+# Commit and push
+git add backend-isaac/
+git commit -m "Update backend with new features"
+git push origin isaac-backend
