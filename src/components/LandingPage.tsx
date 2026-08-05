@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import NaiLandLogo from './NaiLandLogo';
+import { useCommunities } from '../lib/CommunitiesContext';
 import { ArrowRight, Globe, Layers, Check, Search, ShieldCheck, Cpu, Smartphone, Monitor, Users, FileText, CheckSquare } from 'lucide-react';
 // @ts-ignore
 import sunsetSilhouette from '../assets/images/sunset_community_silhouette_1781078632097.png';
@@ -11,6 +12,7 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkillsClick }: LandingPageProps) {
+  const { communities } = useCommunities();
   const [skillSearch, setSkillSearch] = useState('');
   const [activeStep, setActiveStep] = useState(1);
   const [activeScrollRow, setActiveScrollRow] = useState(0);
@@ -28,54 +30,20 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
     return txt.toLowerCase().includes(skillSearch.toLowerCase());
   };
 
-  // Cards state with exact colored dots as shown in design
-  const collabFeeds = [
-    {
-      id: 1,
-      name: 'Tomiwa A.',
-      role: 'Mobile Developer',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400',
-      projects: '3 projects verified',
-      badge: 'ACTIVE NOW',
-      dotColor: 'bg-orange-500'
-    },
-    {
-      id: 2,
-      name: 'Zainab K.',
-      role: 'Product Designer',
-      avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=400',
-      projects: '3 Collaborations',
-      badge: 'BUILDING IN PUBLIC',
-      dotColor: 'bg-rose-500'
-    },
-    {
-      id: 3,
-      name: 'Samuel O.',
-      role: 'Backend Engineer',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400',
-      projects: '2 API Contributions',
-      badge: 'EARLY CONTRIBUTOR',
-      dotColor: 'bg-sky-500'
-    },
-    {
-      id: 4,
-      name: 'Amaka R.',
-      role: 'Technical Manager',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400',
-      projects: '1 Shipped Project',
-      badge: 'GROWING EXPERIENCE',
-      dotColor: 'bg-amber-600'
-    },
-    {
-      id: 5,
-      name: 'Daniella T.',
-      role: 'Front-end Developer',
-      avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=400',
-      projects: '2 UI Deliverables',
-      badge: 'OPEN TO COLLAB',
-      dotColor: 'bg-purple-600'
-    }
-  ];
+  // Real community cards from API (falls back to live feed styling)
+  const collabFeeds = communities.slice(0, 5).map((c, idx) => {
+    const dotColors = ['bg-orange-500', 'bg-rose-500', 'bg-sky-500', 'bg-amber-600', 'bg-purple-600'];
+    const badges = ['ACTIVE NOW', 'BUILDING IN PUBLIC', 'EARLY CONTRIBUTOR', 'GROWING EXPERIENCE', 'OPEN TO COLLAB'];
+    return {
+      id: idx + 1,
+      name: c.name,
+      role: (c.tags && c.tags[0]) || 'Community',
+      avatar: c.avatar,
+      projects: `${c.memberCount || 0} members`,
+      badge: badges[idx % badges.length],
+      dotColor: dotColors[idx % dotColors.length]
+    };
+  });
 
   const skillPills = [
     { text: 'Technical', isDark: false },

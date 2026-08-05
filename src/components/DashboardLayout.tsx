@@ -26,8 +26,8 @@ export default function DashboardLayout({ user, activeTab, setActiveTab, onLogou
     { id: 'logout' as DashboardTab, text: 'Log Out', icon: LogOut, action: onLogout },
   ];
 
-  // Afolabi Ola profile avatar matching the image
-  const profileAvatarUrl = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120';
+  // Real user avatar from auth profile
+  const profileAvatarUrl = user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120';
 
   return (
     <div className="bg-[#FFFFFF] min-h-screen text-stone-800 flex flex-col md:flex-row font-sans" id="app-layout-root">

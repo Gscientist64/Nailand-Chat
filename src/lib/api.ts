@@ -136,6 +136,17 @@ export const feedsApi = {
 };
 
 // ============================================================
+// Tasks API
+// ============================================================
+export const tasksApi = {
+  getTasks: (threadId: string) => request<any[]>('GET', `/api/tasks/${threadId}`),
+  createTask: (threadId: string, text: string) =>
+    request<any>('POST', `/api/tasks/${threadId}`, { text }),
+  toggleTask: (id: string) => request<any>('PATCH', `/api/tasks/${id}/toggle`),
+  deleteTask: (id: string) => request<any>('DELETE', `/api/tasks/${id}`),
+};
+
+// ============================================================
 // WebSocket client
 // ============================================================
 let socketInstance: WebSocket | null = null;

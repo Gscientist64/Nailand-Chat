@@ -34,7 +34,8 @@ import {
 } from 'lucide-react';
 import { CommunityFeedPost, CollabOffer, SkillRequest } from '../types';
 import { useAuth } from '../lib/AuthContext';
-import { feedsApi } from '../lib/api';
+import { useCommunities } from '../lib/CommunitiesContext';
+import { feedsApi, messagesApi, communitiesApi } from '../lib/api';
 
 interface CommunitySectionProps {
   communityName: string;
@@ -42,6 +43,11 @@ interface CommunitySectionProps {
 }
 
 export default function CommunitySection({ communityName, onBackToDashboard }: CommunitySectionProps) {
+  const { user } = useAuth();
+  const { communities } = useCommunities();
+  const currentCommunity = communities.find((c) => c.name === communityName);
+  const currentCommunityId = currentCommunity?.id;
+
   // Navigation & Toggle states
   const [activeSubTab, setActiveSubTab] = useState<'feeds' | 'offers' | 'requests'>('feeds');
   const [activeResourceTab, setActiveResourceTab] = useState<'media' | 'files' | 'links'>('media');
@@ -55,92 +61,92 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   const [feeds, setFeeds] = useState<CommunityFeedPost[]>([]);
   const [feedsLoading, setFeedsLoading] = useState(true);
 
-  // Suggested community contacts for sidebar and details
-  const communityMembers = [
-    { name: 'Afolabi Ola', rating: 5, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120', role: 'UX/UI Expert' },
-    { name: 'Afolabi Emmanuel', rating: 5, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120', role: 'Brand Designer' },
-    { name: 'Afolabi Toyosi', rating: 4, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=120', role: 'Front End Engineer' },
-    { name: 'Afolabi Blessing', rating: 5, avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=120', role: 'Copywriter' },
-    { name: 'Afolabi Victor', rating: 5, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120', role: '3D Designer' },
-    { name: 'Afolabi Funke', rating: 5, avatar: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=120', role: 'Figma Guru' },
-    { name: 'Afolabi Tunde', rating: 4, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=120', role: 'Illustrator' }
-  ];
-
+  // Real community members from API
+  const [communityMembers, setCommunityMembers] = useState<any[]>([]);
   const [connectedMembers, setConnectedMembers] = useState<Record<string, boolean>>({});
 
-  // Chat conversation list inside the community chat layout
-  const communitiesForChat = [
-    { name: 'Figma Buddies', description: 'Design tokens & UX guides', avatar: 'https://images.unsplash.com/photo-1628005182384-a83a8bd57fbe?q=80&w=120', members: '256k members', unreadCount: 1, active: true },
-    { name: 'UIUX Covens', description: 'Advanced wireframing labs', avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=120', members: '124k members', unreadCount: 0, active: false },
-    { name: 'Adobe Expert', description: 'Chroma & layout experts', avatar: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=120', members: '98k members', unreadCount: 3, active: false }
-  ];
+  // Chat conversation list from API community threads
+  const [communitiesForChat, setCommunitiesForChat] = useState<any[]>([]);
+  const [activeChatCommunity, setActiveChatCommunity] = useState<string>('');
 
-  const [activeChatCommunity, setActiveChatCommunity] = useState<string>('Figma Buddies');
-
-  // Interactive chat messages state
-  const [chatStore, setChatStore] = useState<Record<string, Array<{ sender: string, avatar: string, content: string, time: string, isMe: boolean }>>>({
-    'Figma Buddies': [
-      {
-        sender: 'Afolabi Emmanuel',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-        content: "Hi, trust you're doing well? I'm a budding Brand Designer, hope to collaborate with you on project soon",
-        time: '10:12am',
-        isMe: false
-      },
-      {
-        sender: 'You',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-        content: "Yes, I'm very well. Sure, I'll collaborate with you. I do design in general",
-        time: '10:13am',
-        isMe: true
-      },
-      {
-        sender: 'Afolabi Emmanuel',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
-        content: "That sounds awesome! Let me know when you are free to do a quick huddle or review some landing frames.",
-        time: '10:15am',
-        isMe: false
-      }
-    ],
-    'UIUX Covens': [
-      {
-        sender: 'Afolabi Ola',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-        content: "Welcome to UIUX Covens room. Share your portfolios!",
-        time: 'Yesterday',
-        isMe: false
-      }
-    ],
-    'Adobe Expert': [
-      {
-        sender: 'Afolabi Funke',
-        avatar: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=120',
-        content: "Anyone expert in Photoshop automated scripts?",
-        time: 'Monday',
-        isMe: false
-      }
-    ]
-  });
+  // Interactive chat messages state from API
+  const [chatStore, setChatStore] = useState<Record<string, Array<{ sender: string, avatar: string, content: string, time: string, isMe: boolean }>>>({});
+  const [activeChatThreadId, setActiveChatThreadId] = useState<string | null>(null);
 
   const [typedMessage, setTypedMessage] = useState<string>('');
 
-  const sendNewChatMessage = (e: React.FormEvent) => {
+  // Load community members + chat threads from API
+  useEffect(() => {
+    if (!currentCommunityId) return;
+
+    communitiesApi.get(currentCommunityId).then((res) => {
+      if (res.success && res.data) {
+        const members = (res.data.members || []).map((m: any) => ({
+          name: m.userName || m.name || 'Community Member',
+          rating: m.rating || 4,
+          avatar: m.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          role: m.role || 'Member',
+        }));
+        setCommunityMembers(members.length > 0 ? members : []);
+      }
+    });
+
+    messagesApi.getThreads().then((res) => {
+      if (res.success && res.data) {
+        const communityThreads = (res.data as any[]).filter((t) => t.isCommunity);
+        if (communityThreads.length > 0) {
+          setCommunitiesForChat(communityThreads.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: 'Community channel',
+            avatar: t.avatar,
+            members: 'Community',
+            unreadCount: 0,
+            active: false,
+          })));
+          setActiveChatCommunity(communityThreads[0].name);
+          setActiveChatThreadId(communityThreads[0].id);
+        }
+      }
+    });
+  }, [currentCommunityId]);
+
+  // Load chat messages for the active community thread
+  useEffect(() => {
+    if (!activeChatThreadId) return;
+    messagesApi.getMessages(activeChatThreadId).then((res) => {
+      if (res.success && res.data) {
+        const mapped = (res.data as any[]).map((m) => ({
+          sender: m.sender || 'Member',
+          avatar: m.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          content: m.content,
+          time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          isMe: m.senderId === user?.id,
+        }));
+        setChatStore((prev) => ({ ...prev, [activeChatCommunity]: mapped }));
+      }
+    });
+  }, [activeChatThreadId, activeChatCommunity, user?.id]);
+
+  const sendNewChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!typedMessage.trim()) return;
+    if (!typedMessage.trim() || !activeChatThreadId) return;
 
     const newMessage = {
-      sender: 'You',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+      sender: user?.firstName || 'You',
+      avatar: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
       content: typedMessage,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isMe: true
     };
 
-    setChatStore({
-      ...chatStore,
-      [activeChatCommunity]: [...(chatStore[activeChatCommunity] || []), newMessage]
-    });
+    setChatStore((prev) => ({
+      ...prev,
+      [activeChatCommunity]: [...(prev[activeChatCommunity] || []), newMessage]
+    }));
     setTypedMessage('');
+
+    await messagesApi.sendMessage(activeChatThreadId, typedMessage);
   };
 
   // Fetch feeds from API
@@ -229,26 +235,36 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     }
   };
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostText.trim() && draftAttachments.length === 0) return;
+    if (!currentCommunityId) return;
 
-    const post: CommunityFeedPost = {
-      id: `f-${Date.now()}`,
-      author: 'Afolabi Ola (You)',
-      authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
-      rating: 5,
-      timeAgo: 'Just now',
+    const res = await feedsApi.createPost(currentCommunityId, {
       content: newPostText,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      image: draftAttachments.length > 0 ? draftAttachments[0].url : undefined,
-      images: draftAttachments.map(a => a.url),
-      attachmentTypes: draftAttachments.map(a => a.type)
-    };
+      images: draftAttachments.filter(a => a.type === 'image').map(a => a.url),
+      videoUrl: draftAttachments.find(a => a.type === 'video')?.url,
+    });
 
-    setFeeds([post, ...feeds]);
+    if (res.success && res.data) {
+      const post: CommunityFeedPost = {
+        id: res.data.id,
+        author: user?.firstName || 'You',
+        authorId: user?.id || '',
+        authorAvatar: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+        rating: 5,
+        timeAgo: 'Just now',
+        content: newPostText,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        image: draftAttachments.length > 0 ? draftAttachments[0].url : undefined,
+        images: draftAttachments.map(a => a.url),
+        attachmentTypes: draftAttachments.map(a => a.type)
+      };
+      setFeeds([post, ...feeds]);
+    }
+
     setNewPostText('');
     setDraftAttachments([]);
     setDraftAttachmentIndex(0);
@@ -288,30 +304,32 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     });
   };
 
-  const [offers, setOffers] = useState<CollabOffer[]>([
-    {
-      id: 'o-1',
-      title: 'Mobile App Product System Audit',
-      description: 'Require a comprehensive expert review on our mobile crypto wallet onboarding flows. Need to optimize navigation triggers and accessibility contrasts.',
-      objectives: [
-        'Review signup / confirmation wizard friction',
-        'Analyze text contrast ratios on dark canvases',
-        'Deliver responsive interactive Figma layout prototypes'
-      ],
-      roles: ['Lead UX Analyst', 'Accessibility Coordinator'],
-      collaboratorsCount: 3,
-      projectLength: '2 Weeks',
-      commitment: '10 hrs/wk',
-      monetary: '150 Naitoken',
-      skillExchange: 'React mentorship + Smart contract intro',
-      creator: 'Afolabi Emmanuel',
-      creatorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120'
-    }
-  ]);
+  const [offers, setOffers] = useState<CollabOffer[]>([]);
 
-  const handleFinishCollabWizard = () => {
-    const newOffer: CollabOffer = {
-      id: `o-${Date.now()}`,
+  // Fetch collab offers from API
+  useEffect(() => {
+    feedsApi.getOffers().then((res) => {
+      if (res.success && res.data) {
+        setOffers((res.data as any[]).map((o) => ({
+          id: o.id,
+          title: o.title,
+          description: o.description,
+          objectives: o.objectives || [],
+          roles: o.roles || [],
+          collaboratorsCount: o.collaboratorsCount || 1,
+          projectLength: o.projectLength || '',
+          commitment: o.commitment || '',
+          monetary: o.monetary || '',
+          skillExchange: o.skillExchange || '',
+          creator: o.creator || 'Community Member',
+          creatorAvatar: o.creatorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+        })));
+      }
+    });
+  }, []);
+
+  const handleFinishCollabWizard = async () => {
+    const newOffer = {
       title: collabFormData.project,
       description: collabFormData.briefDescription,
       objectives: collabFormData.objectives,
@@ -321,11 +339,17 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
       commitment: collabFormData.expectedCommitment,
       monetary: collabFormData.monetaryCompensation,
       skillExchange: collabFormData.skillExchange,
-      creator: 'Afolabi Ola',
-      creatorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'
     };
 
-    setOffers([newOffer, ...offers]);
+    const res = await feedsApi.createOffer(newOffer);
+    if (res.success && res.data) {
+      setOffers((prev) => [{
+        ...newOffer,
+        id: res.data.id,
+        creator: user?.firstName || 'You',
+        creatorAvatar: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+      }, ...prev]);
+    }
     setCollabWizardStep(0); // close wizard
     setActiveSubTab('offers'); // switch to Collabs list for success confirmation
   };
@@ -339,21 +363,27 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     monetaryCompensation: '100 Naitoken'
   });
 
-  const [skillRequests, setSkillRequests] = useState<SkillRequest[]>([
-    {
-      id: 'sr-1',
-      title: '3D Blender Icon Renders',
-      description: 'Looking for a skilled 3D modeling designer to create 4 glass-morphic styled coin vectors for our Web3 yield staking dashboard headers.',
-      roles: ['Blender Generalist', 'Skeuomorphic Sculptor'],
-      projectLength: '1 Week',
-      monetary: '75 Naitoken'
-    }
-  ]);
+  const [skillRequests, setSkillRequests] = useState<SkillRequest[]>([]);
 
-  const handleCreateSkillRequest = (e: React.FormEvent) => {
+  // Fetch skill requests from API
+  useEffect(() => {
+    feedsApi.getSkillRequests().then((res) => {
+      if (res.success && res.data) {
+        setSkillRequests((res.data as any[]).map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          roles: r.roles || [],
+          projectLength: r.projectLength || '',
+          monetary: r.monetary || '',
+        })));
+      }
+    });
+  }, []);
+
+  const handleCreateSkillRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newReq: SkillRequest = {
-      id: `sr-${Date.now()}`,
+    const newReq = {
       title: skillReqFormData.title,
       description: skillReqFormData.briefDescription,
       roles: skillReqFormData.roles.split(',').map(r => r.trim()),
@@ -361,18 +391,22 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
       monetary: skillReqFormData.monetaryCompensation
     };
 
-    setSkillRequests([newReq, ...skillRequests]);
+    const res = await feedsApi.createSkillRequest(newReq);
+    if (res.success && res.data) {
+      setSkillRequests((prev) => [{ ...newReq, id: res.data.id }, ...prev]);
+    }
     setIsSkillRequestActive(false);
     setActiveSubTab('requests'); // show list
   };
 
-  const toggleLikePost = (postId: string) => {
+  const toggleLikePost = async (postId: string) => {
     setFeeds(feeds.map(f => {
       if (f.id === postId) {
         return { ...f, likes: f.likes + 1 };
       }
       return f;
     }));
+    await feedsApi.likePost(postId);
   };
 
   const handleConnectMember = (name: string) => {

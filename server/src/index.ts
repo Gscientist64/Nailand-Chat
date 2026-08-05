@@ -13,6 +13,7 @@ import userRoutes from './routes/users.js';
 import communityRoutes from './routes/communities.js';
 import messageRoutes from './routes/messages.js';
 import feedRoutes from './routes/feeds.js';
+import taskRoutes from './routes/tasks.js';
 
 // WebSocket
 import { setupWebSocket } from './ws/chat.js';
@@ -50,6 +51,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/feeds', feedRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // ============================================================
 // 404 Handler

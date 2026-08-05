@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatThread, ChatMessage } from '../types';
-import { messagesApi } from '../lib/api';
+import { messagesApi, tasksApi } from '../lib/api';
 import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -103,16 +103,22 @@ export default function MessagesSection({
     return () => clearInterval(timer);
   }, []);
 
-  // Shared task checklists
-  const [tasks, setTasks] = useState([
-    { id: 1, text: 'Set up database schema', checked: true },
-    { id: 2, text: 'Design Figma responsive layouts', checked: true },
-    { id: 3, text: 'Build React component architecture', checked: false },
-    { id: 4, text: 'Audit smart contracts', checked: false }
-  ]);
+  // Shared task checklists from API
+  const [tasks, setTasks] = useState<any[]>([]);
 
-  const toggleTask = (id: number) => {
+  // Fetch tasks for the active thread
+  useEffect(() => {
+    if (!activeThreadId) return;
+    tasksApi.getTasks(activeThreadId).then((res) => {
+      if (res.success && res.data) {
+        setTasks(res.data);
+      }
+    });
+  }, [activeThreadId]);
+
+  const toggleTask = async (id: string) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, checked: !t.checked } : t));
+    await tasksApi.toggleTask(id);
   };
 
   // Find active thread
@@ -167,34 +173,6 @@ export default function MessagesSection({
 
     // Send via API
     await messagesApi.sendMessage(currentThreadId, textToSend);
-
-    // Trigger typing simulator after 400ms
-    setTimeout(() => {
-      setIsTyping(currentThreadId);
-    }, 400);
-
-    // Trigger auto reply simulation after 1800ms
-    setTimeout(() => {
-      setIsTyping(null);
-      const autoMsg: ChatMessage = {
-        id: `m-rep-${Date.now()}`,
-        sender: activeThread.name,
-        avatar: activeThread.avatar,
-        content: `Got it! Let's build that out right away. High five! ✋`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isMe: false
-      };
-      setThreads(prev => prev.map(t => {
-        if (t.id === currentThreadId) {
-          return {
-            ...t,
-            lastMessage: autoMsg.content,
-            messages: [...t.messages, autoMsg]
-          };
-        }
-        return t;
-      }));
-    }, 1800);
   };
 
   // Filter threads
