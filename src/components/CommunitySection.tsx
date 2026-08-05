@@ -151,13 +151,14 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
 
   // Fetch feeds from API
   useEffect(() => {
-    feedsApi.getPosts(communityName).then((res) => {
+    if (!currentCommunityId) return;
+    feedsApi.getPosts(currentCommunityId).then((res) => {
       if (res.success && res.data && res.data.length > 0) {
         setFeeds(res.data.map((p: any) => ({
           id: p.id,
-          author: p.authorId || 'User',
+          author: p.author || 'Member',
           authorId: p.authorId,
-          authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          authorAvatar: p.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
           rating: 5,
           timeAgo: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'recent',
           content: p.content,
@@ -170,7 +171,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
       }
       setFeedsLoading(false);
     });
-  }, [communityName]);
+  }, [currentCommunityId]);
 
   const [newPostText, setNewPostText] = useState('');
   const [newPostImage, setNewPostImage] = useState(''); // Compatibility hook
