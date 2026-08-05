@@ -26,7 +26,6 @@ function AppContent() {
   // Chat Threads state fetched from API
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>('');
-  const [showWalkthrough, setShowWalkthrough] = useState(true);
 
   // Fetch threads when user is authenticated
   useEffect(() => {
@@ -114,98 +113,6 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-[#fdfcf9] relative text-stone-800" id="app-root-container">
       
-      {/* PROTOTYPE WALKTHROUGH CONTROLLER FLOATING HEADER BAR */}
-      {showWalkthrough && (
-        <div 
-          className="bg-stone-900 border-b border-stone-800 text-stone-100 py-3.5 px-4 sticky top-0 z-50 text-xs shadow-md"
-          id="walkthrough-bar"
-        >
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-            <div className="flex items-center gap-2" id="walkthrough-intro">
-              <span className="p-1.5 bg-[#f8c21a] rounded text-stone-950 font-bold text-[10px] animate-pulse">
-                PROTOTYPE DIRECTORY
-              </span>
-              <p className="text-left text-stone-300 text-[11px] leading-relaxed">
-                Rebuilt pixel-perfect replica of <strong className="text-white font-serif">NaiLand</strong>. You can navigate the experience organically or click direct presets beneath!
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2.5 items-center justify-center" id="walkthrough-presets">
-              <span className="text-[10px] font-mono text-stone-500 uppercase">Presets:</span>
-              
-              <button 
-                onClick={() => setActiveView(ActiveView.LANDING)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
-                  ${activeView === ActiveView.LANDING 
-                    ? 'bg-[#f8c21a] text-stone-950 font-black' 
-                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'}`}
-              >
-                1. Landing Web Page
-              </button>
-
-              <button 
-                onClick={() => setActiveView(ActiveView.SIGN_UP)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
-                  ${activeView === ActiveView.SIGN_UP 
-                    ? 'bg-[#f8c21a] text-stone-950 font-black' 
-                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'}`}
-              >
-                2. Onboarding Forms
-              </button>
-
-              <button 
-                onClick={() => {
-                  setActiveView(ActiveView.APP_LAYOUT);
-                  setActiveTab('dashboard');
-                  setSelectedCommunity(null);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
-                  ${activeView === ActiveView.APP_LAYOUT && activeTab === 'dashboard'
-                    ? 'bg-[#f8c21a] text-stone-950 font-black' 
-                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'}`}
-              >
-                3. Live Coordinates Map
-              </button>
-
-              <button 
-                onClick={() => {
-                  setActiveView(ActiveView.APP_LAYOUT);
-                  setActiveTab('community');
-                  setSelectedCommunity('Figma Buddies');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
-                  ${activeView === ActiveView.APP_LAYOUT && selectedCommunity === 'Figma Buddies'
-                    ? 'bg-[#f8c21a] text-stone-950 font-black' 
-                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'}`}
-              >
-                4. Figma Buddies Chamber
-              </button>
-
-              <button 
-                onClick={() => {
-                  setActiveView(ActiveView.APP_LAYOUT);
-                  setActiveTab('messages');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition whitespace-nowrap
-                  ${activeView === ActiveView.APP_LAYOUT && activeTab === 'messages'
-                    ? 'bg-[#f8c21a] text-stone-950' 
-                    : 'bg-stone-800 hover:bg-stone-700 text-stone-300'}`}
-              >
-                5. Project Chat Sidebar
-              </button>
-
-              <button 
-                onClick={() => setShowWalkthrough(false)}
-                className="text-stone-500 hover:text-white text-lg font-bold pl-1 border-l border-stone-800 ml-1.5 whitespace-nowrap"
-                title="Hide Preset Navigator"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MAIN ACTIVE MOUNT DIRECTORY */}
       <div id="mount-view-container" className="relative">
         
