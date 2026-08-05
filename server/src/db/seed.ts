@@ -160,7 +160,7 @@ async function seed() {
   ]);
 
   const directMessages = [
-    { threadId: directThread.id, senderId: createdUsers[1].id, content: "Hello! I am excited to kickstart this mock collaboration on Nailand workspace." },
+    { threadId: directThread.id, senderId: createdUsers[1].id, content: "Hello! I am excited to kickstart this collaboration on the Nailand workspace." },
     { threadId: directThread.id, senderId: createdUsers[0].id, content: "Same here! The Web3 peer design looks highly accurate and responsive." },
     { threadId: directThread.id, senderId: createdUsers[1].id, content: "Awesome workspace! Let us review the database schema tonight." },
   ];

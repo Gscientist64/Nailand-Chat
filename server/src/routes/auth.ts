@@ -94,13 +94,13 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
 });
 
 // ============================================================
-// POST /api/auth/verify-code — Verify email with code (mock: 4582)
+// POST /api/auth/verify-code — Verify email with code (placeholder: 4582)
 // ============================================================
 router.post('/verify-code', validate(verifyCodeSchema), async (req: Request, res: Response) => {
   try {
     const { email, code } = req.body;
 
-    // Mock verification — in production, check against stored code
+    // Placeholder verification — replace with real emailed code delivery in production
     if (code !== '4582') {
       return res.status(400).json({ success: false, error: 'Invalid verification code' });
     }
@@ -232,7 +232,7 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req: Reques
   try {
     const { email, code, newPassword } = req.body;
 
-    // Mock: accept any valid code for demo
+    // Placeholder: accept fixed code until real reset emails are wired up
     if (code !== '4582') {
       return res.status(400).json({ success: false, error: 'Invalid reset code' });
     }

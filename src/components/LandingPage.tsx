@@ -1619,7 +1619,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
 
             </div>
 
-            {/* Right Interactive Mock Mobile Wallet */}
+            {/* Right Interactive Wallet Preview */}
             <div 
               className="p-6 max-w-sm mx-auto w-full select-none flex items-center justify-center shrink-0 self-center" 
               style={{
@@ -1768,7 +1768,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
                           <span className="cursor-pointer hover:text-stone-900 pb-1">Activity</span>
                         </div>
 
-                        {/* Search inside the mock phone screen */}
+                        {/* Search inside the phone preview */}
                         <div className="w-full flex items-center bg-stone-50 border border-stone-100 rounded-lg px-2 py-1 mb-2 shrink-0 animate-pulse-slow" id="lens-search-phone">
                           <input 
                             type="text" 

@@ -1118,7 +1118,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               Choose your interest to best recommend you community
             </p>
 
-            {/* Static list of structured mock-onboarding categories matching the physical screenshot */}
+            {/* Static list of structured onboarding interest categories */}
             <div className="flex flex-col gap-2.5 mb-8 max-h-[380px] overflow-y-auto pr-1" id="interests-accordion-root">
               {[
                 {

@@ -185,14 +185,14 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   const [feedMediaIndices, setFeedMediaIndices] = useState<Record<string, number>>({});
   const [playingFeeds, setPlayingFeeds] = useState<Record<string, boolean>>({});
 
-  // Mock Preset Options for Screens 1-5 in Mockups
+  // Preset composer drafts for quick posting
   const composerPresets = {
     screen1: {
       text: "From the stable of our services, and the brilliancy of our products, we create timeliness structure based on what is trending in the modern world or what you deem fit, your dream world...",
       attachments: []
     },
     screen2: {
-      text: "Single elegant presentation mockup featuring high-contrast dark visual branding guidelines.",
+      text: "Single elegant presentation preview featuring high-contrast dark visual branding guidelines.",
       attachments: [
         { type: 'image', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800' }
       ]
