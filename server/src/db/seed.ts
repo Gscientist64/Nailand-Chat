@@ -1,14 +1,12 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { db } from './index.js';
-import { users, communities, communityMembers, chatThreads, threadParticipants, chatMessages, mapPins, notifications, collabOffers, skillRequests } from './schema.js';
+import { users, communities, communityMembers, chatThreads, threadParticipants, chatMessages, mapPins, notifications } from './schema.js';
 
 async function seed() {
   console.log('🌱 Seeding NaiLand database...\n');
 
   // Clear existing data (dev seed only)
-  await db.delete(skillRequests);
-  await db.delete(collabOffers);
   await db.delete(mapPins);
   await db.delete(notifications);
   await db.delete(chatMessages);
@@ -235,94 +233,10 @@ async function seed() {
   }
   console.log(`  ✓ ${sampleNotifications.length} notifications`);
 
-  // ============================================================
-  // 6. Create collab offers (trending collabs)
-  // ============================================================
-  const offerData = [
-    {
-      title: 'Mobile App Product System Audit',
-      description: 'Need a comprehensive UX review of our crypto wallet onboarding flows. Optimize navigation triggers and accessibility.',
-      objectives: ['Review signup friction', 'Analyze contrast ratios', 'Deliver Figma prototypes'],
-      roles: ['Lead UX Analyst', 'Accessibility Coordinator'],
-      collaboratorsCount: 3,
-      projectLength: '2 Weeks',
-      commitment: '10 hrs/wk',
-      monetary: '150 Naitoken',
-      skillExchange: 'React mentorship + smart contract intro',
-      creatorId: createdUsers[1].id,
-    },
-    {
-      title: 'Web3 Dashboard Design Sprint',
-      description: 'Designing a yield staking dashboard with glassmorphic aesthetics. Need motion + component system support.',
-      objectives: ['Design system', 'Staking flow UI', 'Glassmorphic tokens'],
-      roles: ['UI Designer', 'Motion Designer'],
-      collaboratorsCount: 2,
-      projectLength: '3 Weeks',
-      commitment: '8 hrs/wk',
-      monetary: '120 Naitoken',
-      skillExchange: '3D modeling intro',
-      creatorId: createdUsers[2].id,
-    },
-    {
-      title: 'Backend API Review & Refactor',
-      description: 'Looking for a backend engineer to review our Express API, improve performance and add rate limiting.',
-      objectives: ['API audit', 'Performance tuning', 'Rate limiting'],
-      roles: ['Backend Engineer', 'DevOps'],
-      collaboratorsCount: 2,
-      projectLength: '1 Month',
-      commitment: '12 hrs/wk',
-      monetary: '200 Naitoken',
-      skillExchange: 'Mobile dev mentorship',
-      creatorId: createdUsers[3].id,
-    },
-  ];
-
-  for (const offer of offerData) {
-    await db.insert(collabOffers).values(offer);
-  }
-  console.log(`  ✓ ${offerData.length} collab offers`);
-
-  // ============================================================
-  // 7. Create skill requests (skills needed)
-  // ============================================================
-  const skillReqData = [
-    {
-      title: '3D Blender Icon Renders',
-      description: 'Looking for a 3D modeler to create 4 glassmorphic coin vectors for our Web3 staking dashboard headers.',
-      roles: ['Blender Generalist'],
-      projectLength: '1 Week',
-      monetary: '75 Naitoken',
-      creatorId: createdUsers[0].id,
-    },
-    {
-      title: 'Copywriting for Launch Pages',
-      description: 'Need crisp, conversion-focused copy for our product landing pages and email sequences.',
-      roles: ['Copywriter'],
-      projectLength: '2 Weeks',
-      monetary: '60 Naitoken',
-      creatorId: createdUsers[1].id,
-    },
-    {
-      title: 'React Component Library',
-      description: 'Seeking a frontend dev to build a reusable React component library with Tailwind + storybook docs.',
-      roles: ['React Developer'],
-      projectLength: '3 Weeks',
-      monetary: '180 Naitoken',
-      creatorId: createdUsers[2].id,
-    },
-  ];
-
-  for (const req of skillReqData) {
-    await db.insert(skillRequests).values(req);
-  }
-  console.log(`  ✓ ${skillReqData.length} skill requests`);
-
   console.log('\n✅ Seeding complete!');
   console.log(`   ${createdUsers.length} users`);
   console.log(`   ${createdCommunities.length} communities`);
   console.log(`   ${directMessages.length} sample messages`);
-  console.log(`   ${offerData.length} collab offers`);
-  console.log(`   ${skillReqData.length} skill requests`);
   console.log('\n   Test login credentials:');
   console.log('   Email: john.doe@nailand.com');
   console.log('   Password: Test1234!\n');

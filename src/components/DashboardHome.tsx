@@ -159,6 +159,17 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
           </button>
 
           {/* Carousel Cards list */}
+          {trendingCollabs.length === 0 && (
+            <div className="flex-1 flex items-center justify-center bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-10 text-center" id="trending-empty">
+              <div className="flex flex-col items-center gap-1.5">
+                <Rocket className="w-6 h-6 text-stone-300" />
+                <p className="text-sm text-stone-500 font-medium">No active collabs yet</p>
+                <p className="text-xs text-stone-400">Be the first to post a collaboration offer!</p>
+              </div>
+            </div>
+          )}
+
+          {trendingCollabs.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 flex-1" id="trending-grid">
             {trendingCollabs.map((collab) => (
               <div
@@ -216,6 +227,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
               </div>
             ))}
           </div>
+          )}
         </div>
       </section>
 
@@ -320,7 +332,18 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
           </button>
         </div>
 
+        {skillsNeededGrid.length === 0 && (
+          <div className="flex items-center justify-center bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-10 text-center" id="skills-needed-empty">
+            <div className="flex flex-col items-center gap-1.5">
+              <Award className="w-6 h-6 text-stone-300" />
+              <p className="text-sm text-stone-500 font-medium">No skill requests yet</p>
+              <p className="text-xs text-stone-400">Post a skill request and find collaborators!</p>
+            </div>
+          </div>
+        )}
+
         {/* 9 Cards Grid matching the screenshot */}
+        {skillsNeededGrid.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="skills-needed-grid-box">
           {skillsNeededGrid.map((card, i) => (
             <div
@@ -381,6 +404,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
             </div>
           ))}
         </div>
+        )}
       </section>
 
     </div>
