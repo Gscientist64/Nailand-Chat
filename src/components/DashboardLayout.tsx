@@ -63,7 +63,8 @@ function NotificationsPanel({ onClose, onUnreadRefresh }: { onClose: () => void;
       onUnreadRefresh?.();
     }
     if (n.link) {
-      navigate(n.link);
+      // Notification links are stored as /messages, /community etc. — prefix /app when missing
+      navigate(n.link.startsWith('/app') ? n.link : `/app${n.link}`);
       onClose();
     }
   };

@@ -188,10 +188,10 @@ async function seed() {
   // 4. Create sample notifications for the first user
   // ============================================================
   const sampleNotifications = [
-    { userId: createdUsers[0].id, type: 'message', title: 'New message from Afolabi', body: 'Afolabi Emmanuel sent you a message in your workspace.', link: '/messages', isRead: false },
-    { userId: createdUsers[0].id, type: 'community', title: 'Figma Buddies is trending', body: 'Your community gained new collaborators today.', link: '/community', isRead: false },
-    { userId: createdUsers[0].id, type: 'collab', title: 'New collaboration offer', body: 'A new collab offer matches your skills.', link: '/community', isRead: false },
-    { userId: createdUsers[0].id, type: 'system', title: 'Welcome to NaiLand 🎉', body: 'Your account is fully verified. Start exploring communities.', link: '/dashboard', isRead: true },
+    { userId: createdUsers[0].id, type: 'message', title: 'New message from Afolabi', body: 'Afolabi Emmanuel sent you a message in your workspace.', link: '/app/messages', isRead: false },
+    { userId: createdUsers[0].id, type: 'community', title: 'Figma Buddies is trending', body: 'Your community gained new collaborators today.', link: '/app/community', isRead: false },
+    { userId: createdUsers[0].id, type: 'collab', title: 'New collaboration offer', body: 'A new collab offer matches your skills.', link: '/app/community', isRead: false },
+    { userId: createdUsers[0].id, type: 'system', title: 'Welcome to NaiLand 🎉', body: 'Your account is fully verified. Start exploring communities.', link: '/app/dashboard', isRead: true },
   ];
 
   for (const n of sampleNotifications) {
