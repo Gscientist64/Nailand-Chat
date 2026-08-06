@@ -13,6 +13,18 @@ import MessagesSection from './components/MessagesSection';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ActiveView, DashboardTab, ChatThread } from './types';
 
+// Renders CommunitySection with the URL param resolved inside the Route context
+// (useParams must be called within the matched route, not in the parent component)
+function CommunitySectionRoute({ onBackToDashboard }: { onBackToDashboard: () => void }) {
+  const { communityName } = useParams();
+  return (
+    <CommunitySection
+      communityName={decodeURIComponent(communityName || '')}
+      onBackToDashboard={onBackToDashboard}
+    />
+  );
+}
+
 // Shared app state for threads (preserved across route navigation)
 function AppContent() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -197,12 +209,7 @@ function AppContent() {
             />
             <Route
               path="community/:communityName"
-              element={
-                <CommunitySection
-                  communityName={decodeURIComponent((useParams().communityName || ''))}
-                  onBackToDashboard={() => navigate('/app/community')}
-                />
-              }
+              element={<CommunitySectionRoute onBackToDashboard={() => navigate('/app/community')} />}
             />
             <Route
               path="help"
