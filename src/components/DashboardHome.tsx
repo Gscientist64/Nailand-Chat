@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useCommunities } from '../lib/CommunitiesContext';
-import { dashboardApi, mapPinsApi } from '../lib/api';
+import { dashboardApi, mapPinsApi, feedsApi } from '../lib/api';
 import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock, Rocket, Users2, MessageCircle, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -23,13 +23,23 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
   const [mapPins, setMapPins] = useState<any[]>([]);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
 
-  // Fetch stats + map pins
+  // Real collab offers + skill requests from API
+  const [offers, setOffers] = useState<any[]>([]);
+  const [skillRequests, setSkillRequests] = useState<any[]>([]);
+
+  // Fetch stats, map pins, offers, skill requests
   useEffect(() => {
     dashboardApi.stats().then((res) => {
       if (res.success && res.data) setStats(res.data);
     });
     mapPinsApi.list().then((res) => {
       if (res.success && res.data) setMapPins(res.data);
+    });
+    feedsApi.getOffers().then((res) => {
+      if (res.success && res.data) setOffers(res.data);
+    });
+    feedsApi.getSkillRequests().then((res) => {
+      if (res.success && res.data) setSkillRequests(res.data);
     });
   }, []);
 
@@ -44,24 +54,24 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     { name: 'Sciences', icon: '⚛️', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' }
   ];
 
-  // Real communities from API for trending collabs
-  const trendingCollabs = communities.slice(0, 3).map((c) => ({
-    id: `tc-${c.id}`,
-    name: c.name,
-    avatar: c.avatar,
+  // Trending Collabs = real collab offers from users
+  const trendingCollabs = offers.slice(0, 3).map((o) => ({
+    id: `tc-${o.id}`,
+    name: o.creator || 'Community Member',
+    avatar: o.creatorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
     rating: 4.5,
-    desc: c.description.slice(0, 80) + '...',
-    engagement: `${c.memberCount || 0} members`
+    desc: o.title + (o.description ? ' — ' + o.description.slice(0, 60) : ''),
+    engagement: o.monetary || `${o.collaboratorsCount || 1} collaborator(s)`
   }));
 
-  // Skills needed grid from communities
-  const skillsNeededGrid = communities.slice(0, 9).map((c) => ({
-    id: `sn-${c.id}`,
-    name: c.name,
-    avatar: c.avatar,
-    text: c.description.slice(0, 100) + '...',
+  // Skills Needed = real skill requests from users
+  const skillsNeededGrid = skillRequests.slice(0, 9).map((r) => ({
+    id: `sn-${r.id}`,
+    name: r.title || 'Skill Request',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+    text: r.description || '',
     rating: 4,
-    compensation: `Join ${c.memberCount || 0} members`
+    compensation: r.monetary || (r.roles && r.roles.length ? `Looking for: ${r.roles.join(', ')}` : 'Open to collaborate')
   }));
 
   // Interactive map pins (fallback to empty; data comes from API)
