@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { communities, communityMembers, chatThreads, threadParticipants, users } from '../db/schema.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, and, desc, sql, ilike } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike, inArray } from 'drizzle-orm';
 
 const router = Router();
 
@@ -72,7 +72,7 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
     const myCommunities = await db
       .select()
       .from(communities)
-      .where(sql`${communities.id} = ANY(${ids})`)
+      .where(inArray(communities.id, ids))
       .orderBy(desc(communities.memberCount));
 
     return res.json({
@@ -210,7 +210,8 @@ router.post('/:id/join', authenticate, async (req: Request, res: Response) => {
       .limit(1);
 
     if (existing) {
-      return res.status(409).json({ success: false, error: 'Already a member' });
+      // Idempotent join — already a member is not an error
+      return res.json({ success: true, already: true, message: 'Already a member' });
     }
 
     await db.insert(communityMembers).values({
