@@ -185,57 +185,6 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   const [feedMediaIndices, setFeedMediaIndices] = useState<Record<string, number>>({});
   const [playingFeeds, setPlayingFeeds] = useState<Record<string, boolean>>({});
 
-  // Preset composer drafts for quick posting
-  const composerPresets = {
-    screen1: {
-      text: "From the stable of our services, and the brilliancy of our products, we create timeliness structure based on what is trending in the modern world or what you deem fit, your dream world...",
-      attachments: []
-    },
-    screen2: {
-      text: "Single elegant presentation preview featuring high-contrast dark visual branding guidelines.",
-      attachments: [
-        { type: 'image', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800' }
-      ]
-    },
-    screen3: {
-      text: "Exploring our multi-image presentation models. Swipe through the carousel below to review the responsive layout tokens and community wires.",
-      attachments: [
-        { type: 'image', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800' },
-        { type: 'image', url: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800' },
-        { type: 'image', url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=800' }
-      ]
-    },
-    screen4: {
-      text: "Here is a quick concept video render illustrating the transitions of our staking token dashboard onboarding loop. Hit Play to watch!",
-      attachments: [
-        { type: 'video', url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800' }
-      ]
-    },
-    screen5: {
-      text: "Hybrid mixed-media portfolio showing custom 3D blender animations alongside static layout tokens for the web3 launch.",
-      attachments: [
-        { type: 'video', url: 'https://images.unsplash.com/photo-1635070041078-e363dbe505cb?q=80&w=800' },
-        { type: 'image', url: 'https://images.unsplash.com/photo-1618005198143-e5283b519a7f?q=80&w=800' },
-        { type: 'image', url: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=800' }
-      ]
-    }
-  };
-
-  const applyComposerPreset = (mode: 'screen1' | 'screen2' | 'screen3' | 'screen4' | 'screen5' | 'clear') => {
-    if (mode === 'clear') {
-      setNewPostText('');
-      setDraftAttachments([]);
-      setDraftAttachmentIndex(0);
-      setIsDraftPlayingVideo(false);
-    } else {
-      const preset = composerPresets[mode];
-      setNewPostText(preset.text);
-      setDraftAttachments(preset.attachments as any);
-      setDraftAttachmentIndex(0);
-      setIsDraftPlayingVideo(false);
-    }
-  };
-
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostText.trim() && draftAttachments.length === 0) return;
@@ -272,19 +221,19 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     setIsDraftPlayingVideo(false);
   };
 
-  // Multi-step form values
+  // Multi-step form values (start empty — user fills in real data)
   const [collabFormData, setCollabFormData] = useState({
-    project: 'Building a mobile app',
-    briefDescription: 'I need a team of UIUX designers that can create interactive design interfaces that engage users for Naitalk metaverse company.',
-    objectives: ['Scan Chat', 'Gamified Engagement Hub', 'User Profiles & Interest Tags Creation'],
+    project: '',
+    briefDescription: '',
+    objectives: [] as string[],
     newObjInput: '',
-    lookingFor: 'Front End, UI/UX Designer',
-    roles: 'Front End, UI/UX Designer',
-    numberOfCollaborators: '10',
-    projectLength: '3 Months',
-    expectedCommitment: '10 Hours / Week',
-    monetaryCompensation: '100 Naitoken',
-    skillExchange: 'Copy Writing'
+    lookingFor: '',
+    roles: '',
+    numberOfCollaborators: '',
+    projectLength: '',
+    expectedCommitment: '',
+    monetaryCompensation: '',
+    skillExchange: ''
   });
 
   // Simple additions to objectives
@@ -355,13 +304,13 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     setActiveSubTab('offers'); // switch to Collabs list for success confirmation
   };
 
-  // Skill Request Form Fields state
+  // Skill Request Form Fields state (start empty — user fills in real data)
   const [skillReqFormData, setSkillReqFormData] = useState({
-    title: 'Designing Logo',
-    briefDescription: 'Need help with logo design for AT&T mediaworld',
-    roles: 'Graphic Designer',
-    projectLength: '3 Months',
-    monetaryCompensation: '100 Naitoken'
+    title: '',
+    briefDescription: '',
+    roles: '',
+    projectLength: '',
+    monetaryCompensation: ''
   });
 
   const [skillRequests, setSkillRequests] = useState<SkillRequest[]>([]);
@@ -508,7 +457,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   <h4 className="font-sans font-bold text-sm text-stone-900">{activeChatCommunity}</h4>
                   <span className="text-[11px] text-stone-400 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                    1.2k people online
+                    {currentCommunity?.memberCount || communityMembers.length || 0} members
                   </span>
                 </div>
               </div>
@@ -618,8 +567,8 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
               <div className="flex items-center gap-4 text-left" id="com-jumbotron-profile-card">
                 <div className="relative shrink-0">
                   <img 
-                    src="https://images.unsplash.com/photo-1628005182384-a83a8bd57fbe?q=80&w=120" 
-                    alt="Figma Buddies Logo Logo" 
+                    src={currentCommunity?.avatar || 'https://images.unsplash.com/photo-1628005182384-a83a8bd57fbe?q=80&w=120'} 
+                    alt={`${currentCommunity?.name || communityName} Logo`} 
                     className="w-16 h-16 rounded-full object-cover border-2 border-amber-500 shadow-md bg-stone-100"
                     referrerPolicy="no-referrer"
                   />
@@ -628,10 +577,10 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                 
                 <div className="flex flex-col" id="com-jumbotron-name-sub">
                   <h2 className="text-2xl font-sans font-black flex items-center gap-2 tracking-tight">
-                    <span>{communityName}</span>
+                    <span>{currentCommunity?.name || communityName}</span>
                   </h2>
                   <p className="text-stone-300 text-xs mt-1 max-w-lg leading-relaxed font-sans">
-                    Figma Buddies is a group of designers who come together to learn, collaborate and share skills.
+                    {currentCommunity?.description || 'A community on NaiLand — join to collaborate and exchange skills.'}
                     <span className="text-amber-400 font-bold ml-1 cursor-pointer hover:underline">...more</span>
                   </p>
                 </div>
@@ -679,56 +628,9 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
               {/* Write Post Box card matching screens */}
               <div className="bg-white border border-[#EBEBEB] p-5 rounded-2xl flex flex-col gap-4 shadow-sm" id="com-composer-post-card">
                 
-                {/* Visual Specifications Presets Switcher Row */}
-                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-stone-50 border border-stone-150 rounded-xl" id="com-preset-selector-row">
-                  <span className="text-[10px] font-mono font-bold text-stone-400 uppercase mr-1">Draft Demos:</span>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('screen1')} 
-                    className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 hover:border-amber-400 rounded-full transition cursor-pointer"
-                  >
-                    S1: Text Only
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('screen2')} 
-                    className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 hover:border-amber-400 rounded-full transition cursor-pointer"
-                  >
-                    S2: Single Image
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('screen3')} 
-                    className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 hover:border-amber-400 rounded-full transition cursor-pointer"
-                  >
-                    S3: Carousel
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('screen4')} 
-                    className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 hover:border-amber-400 rounded-full transition cursor-pointer"
-                  >
-                    S4: Video Draft
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('screen5')} 
-                    className="px-2.5 py-1 text-[10px] font-bold bg-white hover:bg-amber-50 text-stone-700 border border-stone-200 hover:border-amber-400 rounded-full transition cursor-pointer"
-                  >
-                    S5: Mixed Media
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => applyComposerPreset('clear')} 
-                    className="px-2.5 py-1 text-[10px] font-extrabold bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full border border-rose-150 ml-auto transition cursor-pointer"
-                  >
-                    ✕ Reset
-                  </button>
-                </div>
-
                 <div className="flex gap-3" id="com-composer-body">
                   <img 
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120"
+                    src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'}
                     alt="Author avatar"
                     className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
                     referrerPolicy="no-referrer"
@@ -736,7 +638,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   <textarea 
                     value={newPostText}
                     onChange={(e) => setNewPostText(e.target.value)}
-                    placeholder="Create a post, or select a demo draft template above..."
+                    placeholder="Share an update with your community..."
                     rows={2}
                     className="flex-1 text-xs text-stone-800 bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-xl p-3 outline-none resize-none transition min-h-[60px]"
                     id="composer-text-input"

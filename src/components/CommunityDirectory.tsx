@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Check, Plus } from 'lucide-react';
+import { Star, Check, Plus, Globe } from 'lucide-react';
 import { useCommunities } from '../lib/CommunitiesContext';
-import { communitiesApi } from '../lib/api';
+import { communitiesApi, dashboardApi } from '../lib/api';
 
 interface CommunityDirectoryProps {
   onSelectCommunity: (comName: string) => void;
 }
 
 export default function CommunityDirectory({ onSelectCommunity }: CommunityDirectoryProps) {
-  const [activeRegion, setActiveRegion] = useState('Creative');
+  const [activeRegion, setActiveRegion] = useState('');
   const [activeTab, setActiveTab] = useState<'your' | 'find'>('find');
   const { communities, isLoading, refresh } = useCommunities();
+
+  // Real regions from the backend (distinct regions of registered users)
+  const [regions, setRegions] = useState<{ name: string; count: number }[]>([]);
 
   // My communities fetched from API
   const [myCommunities, setMyCommunities] = useState<any[]>([]);
@@ -28,7 +31,17 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
 
   useEffect(() => {
     loadMyCommunities();
+    dashboardApi.regions().then((res) => {
+      if (res.success && res.data) setRegions(res.data);
+    });
   }, []);
+
+  // Auto-select the most populated region once real data loads
+  useEffect(() => {
+    if (regions.length > 0 && !activeRegion) {
+      setActiveRegion(regions[0].name);
+    }
+  }, [regions, activeRegion]);
 
   const handleJoin = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,27 +56,29 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
     }
   };
 
-  // Suggested region pills structure matching DashboardHome for alignment
-  const suggestedRegions = [
-    { name: 'Creative', icon: '🌍', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]', ringColor: 'border-blue-200' },
-    { name: 'Tech', icon: '🪐', iconBg: 'bg-[#E0F2F1] text-[#00897B]', ringColor: 'border-teal-200' },
-    { name: 'Wellness', icon: '🌺', iconBg: 'bg-[#FFEBEE] text-[#E53935]', ringColor: 'border-rose-200' },
-    { name: 'Business', icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]', ringColor: 'border-slate-200' },
-    { name: 'Politics', icon: '👑', iconBg: 'bg-[#FFF8E1] text-[#FFB300]', ringColor: 'border-amber-200' },
-    { name: 'Economics', icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]', ringColor: 'border-indigo-200' },
-    { name: 'Sciences', icon: '⚛️', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' }
-  ];
+  // Region visual metadata (icons/colors) keyed by known region name; fallback for unknown regions
+  const REGION_META: Record<string, { icon: string; iconBg: string }> = {
+    Africa: { icon: '🌍', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]' },
+    Asia: { icon: '🪐', iconBg: 'bg-[#E0F2F1] text-[#00897B]' },
+    Europe: { icon: '🌺', iconBg: 'bg-[#FFEBEE] text-[#E53935]' },
+    'North America': { icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]' },
+    'South America': { icon: '👑', iconBg: 'bg-[#FFF8E1] text-[#FFB300]' },
+    Oceania: { icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]' },
+  };
+  const REGION_FALLBACK = { icon: '🌐', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]' };
 
-  // Specific professional skills tag layout exactly as the uploaded screenshot
-  const tagColumns = [
-    ['User Experience', 'Graphic Designer', 'Web Designer'],
-    ['3D Designer', 'Modelling craft', 'Social Manager'],
-    ['Engineer Design', 'Architect', 'Fashion Designer'],
-    ['User Experience', 'Graphic Designer', 'Fashion Designer'],
-    ['Engineer Design', 'Architect', 'Social Manager'],
-    ['3D Designer', 'Modelling craft', 'User Experience'],
-    ['User Experience', 'Graphic Designer', 'Web Designer']
-  ];
+  // Region pills = real regions from the backend with member counts
+  const suggestedRegions = regions.map((r) => ({
+    name: r.name,
+    count: r.count,
+    ...(REGION_META[r.name] || REGION_FALLBACK),
+  }));
+
+  // Professional skill tags aggregated from real community tags (deduplicated, 3 per column)
+  const allTags = Array.from(new Set(communities.flatMap((c) => c.tags || [])));
+  const tagColumns = allTags.length > 0
+    ? Array.from({ length: Math.ceil(allTags.length / 3) }, (_, i) => allTags.slice(i * 3, i * 3 + 3))
+    : [];
 
   // Real communities from API
   const displayCards = communities.length > 0
@@ -85,7 +100,15 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
           Suggested Region
         </h3>
         
-        {/* Region Flex Pills Scroller matching the screenshot */}
+        {suggestedRegions.length === 0 ? (
+          <div className="flex items-center justify-center bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-6 text-center" id="dir-regions-empty">
+            <div className="flex flex-col items-center gap-1.5">
+              <Globe className="w-6 h-6 text-stone-300" />
+              <p className="text-sm text-stone-500 font-medium">No regions yet</p>
+              <p className="text-xs text-stone-400">Regions appear here as members join from around the world.</p>
+            </div>
+          </div>
+        ) : (
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none" id="dir-regions-scroller">
           {suggestedRegions.map((region) => (
             <button
@@ -101,13 +124,20 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
                 {region.icon}
               </div>
               <span className="text-[13px] font-sans font-semibold text-stone-800">{region.name}</span>
+              <span className="text-[11px] font-sans font-medium text-stone-400">{region.count}</span>
             </button>
           ))}
         </div>
+        )}
       </section>
 
       {/* SECTION 2: PROFESSION SKILLS TAGS GRID BOX */}
       <section id="sec-dir-tags-board" className="relative bg-[#FAFAFA] border border-[#EFEFEF] rounded-2xl p-8 pr-12 w-full flex justify-between items-center min-h-[178px] overflow-hidden select-none">
+        {tagColumns.length === 0 && (
+          <div className="w-full flex items-center justify-center text-center" id="dir-tags-empty">
+            <p className="text-sm text-stone-400">Skill tags will appear here as communities are created.</p>
+          </div>
+        )}
         {tagColumns.map((col, cIdx) => (
           <div key={cIdx} className="flex flex-col gap-5 text-left" id={`tag-column-${cIdx}`}>
             {col.map((tag, rIdx) => (
@@ -153,6 +183,12 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
         {activeTab === 'your' && myCommunities.length === 0 && (
           <div className="bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-10 text-center text-sm text-stone-400">
             You haven't joined any communities yet. Switch to <strong className="text-stone-600">Find Communities</strong> to explore!
+          </div>
+        )}
+
+        {activeTab === 'find' && displayCards.length === 0 && (
+          <div className="bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-10 text-center text-sm text-stone-400" id="dir-find-empty">
+            No communities have been created yet. Be the first to start one!
           </div>
         )}
 
