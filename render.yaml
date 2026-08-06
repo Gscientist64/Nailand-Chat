@@ -19,9 +19,11 @@ services:
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
-      - key: RESEND_API_KEY
+      - key: BREVO_API_KEY
         sync: false
-      - key: RESEND_FROM_EMAIL
-        value: NaiLand <onboarding@resend.dev>
+      - key: BREVO_FROM_EMAIL
+        value: noreply@example.com
+      - key: BREVO_FROM_NAME
+        value: NaiLand
       - key: FRONTEND_URL
         value: https://nailand-chat.vercel.app

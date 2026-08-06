@@ -1,11 +1,10 @@
-import { Resend } from 'resend';
+// Brevo (Sendinblue) email client — used for verification codes & password resets
+// Uses the Brevo v3 REST API directly. Get an API key at https://brevo.com
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
-// Resend email client — used for verification codes & password resets
-// Get an API key at https://resend.com and set RESEND_API_KEY
-const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder');
-
-// Sender address — default to Resend's test domain until you verify your own domain
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'NaiLand <onboarding@resend.dev>';
+// Sender address — verify an email in Brevo and set BREVO_FROM_EMAIL
+const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || 'noreply@example.com';
+const FROM_NAME = process.env.BREVO_FROM_NAME || 'NaiLand';
 const APP_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 interface SendEmailOptions {
@@ -17,28 +16,44 @@ interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, html, text }: SendEmailOptions): Promise<{ success: boolean; error?: string }> {
   // If no API key configured, log instead of failing (dev fallback)
-  if (!process.env.RESEND_API_KEY) {
+  if (!process.env.BREVO_API_KEY) {
     console.log(`\n📧 [DEV] Email would be sent to ${to}:\nSubject: ${subject}\n${text || ''}\n`);
     return { success: true };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-      text,
+    const res = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: FROM_NAME, email: FROM_EMAIL },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
     });
 
-    if (error) {
-      console.error('Resend email error:', error);
-      return { success: false, error: error.message };
+    if (!res.ok) {
+      const body = await res.text();
+      let message = `Brevo error (${res.status})`;
+      try {
+        const parsed = JSON.parse(body);
+        message = parsed.message || message;
+      } catch {
+        message = body || message;
+      }
+      console.error('Brevo email error:', body);
+      return { success: false, error: message };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Resend send error:', error);
+    console.error('Brevo send error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Email sending failed' };
   }
 }
