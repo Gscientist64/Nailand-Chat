@@ -1,13 +1,67 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
+import { users, verificationCodes } from '../db/schema.js';
 import { generateToken, authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq } from 'drizzle-orm';
+import { generateCode, sendVerificationCode, sendPasswordResetCode } from '../lib/email.js';
 
 const router = Router();
+
+const CODE_TTL_MINUTES = 15;
+
+// ============================================================
+// Helpers
+// ============================================================
+// Create + persist a code, then send it via email
+async function createAndSendCode(email: string, type: 'verify_email' | 'reset_password') {
+  const code = generateCode(6);
+  const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+
+  // Invalidate any previous unused codes for this email+type
+  await db
+    .update(verificationCodes)
+    .set({ used: true })
+    .where(and(
+      eq(verificationCodes.email, email),
+      eq(verificationCodes.type, type),
+      eq(verificationCodes.used, false)
+    ));
+
+  await db.insert(verificationCodes).values({ email, code, type, expiresAt });
+
+  if (type === 'verify_email') {
+    return sendVerificationCode(email, code);
+  }
+  return sendPasswordResetCode(email, code);
+}
+
+// Validate a code for an email + type (checks existence, unused, not expired)
+async function isValidCode(email: string, code: string, type: 'verify_email' | 'reset_password') {
+  const [record] = await db
+    .select()
+    .from(verificationCodes)
+    .where(and(
+      eq(verificationCodes.email, email),
+      eq(verificationCodes.code, code),
+      eq(verificationCodes.type, type),
+      eq(verificationCodes.used, false),
+      sql`${verificationCodes.expiresAt} > now()`
+    ))
+    .limit(1);
+
+  if (!record) return false;
+
+  // Mark as used so it can't be reused
+  await db
+    .update(verificationCodes)
+    .set({ used: true })
+    .where(eq(verificationCodes.id, record.id));
+
+  return true;
+}
 
 // ============================================================
 // Zod Schemas
@@ -28,7 +82,7 @@ const loginSchema = z.object({
 
 const verifyCodeSchema = z.object({
   email: z.string().email(),
-  code: z.string().length(4),
+  code: z.string().length(6),
 });
 
 // ============================================================
@@ -76,6 +130,9 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
         createdAt: users.createdAt,
       });
 
+    // Generate + email a verification code
+    await createAndSendCode(email, 'verify_email');
+
     // Generate JWT
     const token = generateToken({ userId: newUser.id, email: newUser.email });
 
@@ -85,7 +142,7 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
         user: newUser,
         token,
       },
-      message: 'Account created successfully. Please check your email for verification code.',
+      message: 'Account created successfully. Check your email for the 6-digit verification code.',
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -94,15 +151,15 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
 });
 
 // ============================================================
-// POST /api/auth/verify-code — Verify email with code (placeholder: 4582)
+// POST /api/auth/verify-code — Verify email with emailed code
 // ============================================================
 router.post('/verify-code', validate(verifyCodeSchema), async (req: Request, res: Response) => {
   try {
     const { email, code } = req.body;
 
-    // Placeholder verification — replace with real emailed code delivery in production
-    if (code !== '4582') {
-      return res.status(400).json({ success: false, error: 'Invalid verification code' });
+    const valid = await isValidCode(email, code, 'verify_email');
+    if (!valid) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
     }
 
     // Mark email as verified
@@ -114,6 +171,35 @@ router.post('/verify-code', validate(verifyCodeSchema), async (req: Request, res
     return res.json({ success: true, message: 'Email verified successfully' });
   } catch (error) {
     console.error('Verify code error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/auth/resend-code — Resend a verification code
+// ============================================================
+const resendCodeSchema = z.object({
+  email: z.string().email(),
+});
+
+router.post('/resend-code', validate(resendCodeSchema), async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const [user] = await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Account not found' });
+    }
+
+    await createAndSendCode(email, 'verify_email');
+    return res.json({ success: true, message: 'A new verification code has been sent to your email.' });
+  } catch (error) {
+    console.error('Resend code error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -209,10 +295,10 @@ router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Requ
       return res.json({ success: true, message: 'If an account exists, a reset code has been sent.' });
     }
 
-    // In production: send email with reset code via SendGrid / Resend etc.
-    console.log(`Password reset requested for ${email}`);
+    // Send a real password reset code via email
+    await createAndSendCode(email, 'reset_password');
 
-    return res.json({ success: true, message: 'If an account exists, a reset code has been sent.' });
+    return res.json({ success: true, message: 'A password reset code has been sent to your email.' });
   } catch (error) {
     console.error('Forgot password error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -220,11 +306,11 @@ router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Requ
 });
 
 // ============================================================
-// POST /api/auth/reset-password — Set new password
+// POST /api/auth/reset-password — Set new password with emailed code
 // ============================================================
 const resetPasswordSchema = z.object({
   email: z.string().email(),
-  code: z.string().length(4),
+  code: z.string().length(6),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
@@ -232,9 +318,9 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req: Reques
   try {
     const { email, code, newPassword } = req.body;
 
-    // Placeholder: accept fixed code until real reset emails are wired up
-    if (code !== '4582') {
-      return res.status(400).json({ success: false, error: 'Invalid reset code' });
+    const valid = await isValidCode(email, code, 'reset_password');
+    if (!valid) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired reset code' });
     }
 
     const salt = await bcrypt.genSalt(12);

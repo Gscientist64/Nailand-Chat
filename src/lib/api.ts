@@ -82,6 +82,9 @@ export const authApi = {
   googleLogin: (idToken: string) =>
     request<{ user: any; token: string }>('POST', '/api/auth/google', { idToken }, { auth: false }),
 
+  resendCode: (email: string) =>
+    request('POST', '/api/auth/resend-code', { email }, { auth: false }),
+
   getMe: () => request<any>('GET', '/api/auth/me'),
 
   forgotPassword: (data: { email: string }) =>

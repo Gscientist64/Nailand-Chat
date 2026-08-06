@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import NaiLandLogo from './NaiLandLogo';
 import { ActiveView, UserProfile } from '../types';
 import { useAuth } from '../lib/AuthContext';
+import { authApi } from '../lib/api';
 import { ArrowLeft, Check, ShieldAlert, KeyRound, Mail, User, Eye, EyeOff } from 'lucide-react';
 
 interface AuthFlowProps {
@@ -33,10 +34,25 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Confirmation Code Inputs
-  const [code, setCode] = useState(['', '', '', '']);
+  // Confirmation Code Inputs (6-digit)
+  const [code, setCode] = useState(['', '', '', '', '', '']);
   const [confirmState, setConfirmState] = useState<'success' | 'error'>('success');
   const [resentNotice, setResentNotice] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResendCode = async () => {
+    if (!email) return;
+    setIsResending(true);
+    const err = await authApi.resendCode(email);
+    setIsResending(false);
+    if (!err) {
+      setCode(['', '', '', '', '', '']);
+      setResentNotice(true);
+      setTimeout(() => setResentNotice(false), 3000);
+    } else {
+      setApiError(err);
+    }
+  };
   const handleCodeChange = (index: number, val: string) => {
     if (val.length > 1) return;
     const newCode = [...code];
@@ -73,9 +89,51 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
 
   // Pass Reset flow helpers
   const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetCodeSent, setResetCodeSent] = useState(false);
+
+  const handleSendResetToken = async () => {
+    if (!resetEmail) {
+      setApiError('Please enter your email address');
+      return;
+    }
+    setApiError(null);
+    setIsSubmitting(true);
+    const res = await authApi.forgotPassword({ email: resetEmail });
+    setIsSubmitting(false);
+    if (res.success) {
+      setResetCodeSent(true);
+    } else {
+      setApiError(res.error || 'Failed to send reset token');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 8) {
+      setApiError('Password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setApiError('Passwords do not match');
+      return;
+    }
+    if (resetCode.length !== 6) {
+      setApiError('Please enter the 6-digit code from your email');
+      return;
+    }
+    setApiError(null);
+    setIsSubmitting(true);
+    const res = await authApi.resetPassword({ email: resetEmail, code: resetCode, newPassword });
+    setIsSubmitting(false);
+    if (res.success) {
+      alert('Password reset successful! You can now log in.');
+      setCurrentView(ActiveView.LOGIN);
+    } else {
+      setApiError(res.error || 'Password reset failed');
+    }
+  };
 
   // Signup: validate first, then go to confirmation
   const handleSignUpSubmit = async (e: React.FormEvent) => {
@@ -1103,21 +1161,16 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               </div>
             </div>
 
-            {/* Frame 1618875594: 4-digit Input block */}
+            {/* Frame 1618875594: 6-digit Input block */}
             <div className="flex flex-row justify-center items-center gap-3.5 mb-8" id="code-digits-row">
               {code.map((num, idx) => {
                 const entered = code.join('');
-                const isFull = entered.length === 4;
-                const isCorrect = entered === '4582';
+                const isFull = entered.length === 6;
                 
-                // Border/Text class determination based on correctness
+                // Border/Text class determination based on confirm state
                 let borderClass = 'border-stone-200 text-[#0D0C0C] focus:border-stone-800 focus:ring-stone-800';
-                if (isFull) {
-                  if (isCorrect) {
-                    borderClass = 'border-[#1C7C54] text-[#1C7C54] focus:ring-[#1C7C54]';
-                  } else {
-                    borderClass = 'border-[#C52233] text-[#C52233] focus:ring-[#C52233]';
-                  }
+                if (confirmState === 'success' && isFull) {
+                  borderClass = 'border-[#1C7C54] text-[#1C7C54] focus:ring-[#1C7C54]';
                 } else if (confirmState === 'error') {
                   borderClass = 'border-[#C52233] text-[#C52233] focus:ring-[#C52233]';
                 }
@@ -1143,7 +1196,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                       }}
                       className={`w-[48px] h-[48px] text-center font-sans font-semibold text-[16px] leading-[22px] rounded-[12px] bg-white transition-all outline-none border focus:ring-1 ${borderClass}`}
                       style={{
-                        color: (isFull && isCorrect) ? '#1C7C54' : (isFull && !isCorrect) || confirmState === 'error' ? '#C52233' : '#0D0C0C'
+                        color: (confirmState === 'success' && isFull) ? '#1C7C54' : confirmState === 'error' ? '#C52233' : '#0D0C0C'
                       }}
                     />
                   </div>
@@ -1161,29 +1214,25 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               >
                 <button 
                   type="button"
-                  className="text-[12px] leading-[16px] text-[#797575] font-sans hover:text-[#FFC107] transition-colors cursor-pointer select-none underline font-medium"
-                  onClick={() => {
-                    setCode(['4', '5', '8', '2']);
-                    setConfirmState('success');
-                    setResentNotice(true);
-                    setTimeout(() => setResentNotice(false), 3000);
-                  }}
+                  disabled={isResending}
+                  onClick={handleResendCode}
+                  className="text-[12px] leading-[16px] text-[#797575] font-sans hover:text-[#FFC107] transition-colors cursor-pointer select-none underline font-medium disabled:opacity-50"
                   id="resend-trigger-btn"
                 >
-                  Resend code
+                  {isResending ? 'Sending...' : 'Resend code'}
                 </button>
               </div>
 
               {resentNotice && (
                 <div className="text-[11px] text-[#1C7C54] font-sans text-center transition-opacity" id="resend-toast-message">
-                  ✓ Confirmation code resent! Enter 4582 to join.
+                  ✓ A new verification code has been sent to your email.
                 </div>
               )}
 
               {/* Informative error tips for wrong code configurations */}
-              {((code.join('').length === 4 && code.join('') !== '4582') || confirmState === 'error') && (
+              {((code.join('').length === 6 && confirmState !== 'success') || confirmState === 'error') && (
                 <div className="text-[11px] text-[#C52233] font-sans text-center transition-all" id="wrong-code-error-message">
-                  ⚠ Incorrect confirmation code. Please check and try again.
+                  ⚠ Incorrect confirmation code. Please check your email and try again.
                 </div>
               )}
 
@@ -1427,10 +1476,21 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                   <div id="reset-alert-txt">
                     <span className="font-semibold text-xs text-amber-800" id="reset-sent-title">Reset token sent!</span>
                     <p className="text-[10px] text-amber-700 mt-1" id="reset-sent-body">
-                      We have dispatched a six digit passcode token. Copy code <strong className="bg-[#f8c21a]/20 px-1 py-0.5 rounded">931 405</strong> to confirm!
+                      We've emailed a 6-digit code to <strong>{resetEmail}</strong>. Enter it below to continue.
                     </p>
                   </div>
                 </div>
+
+                {/* Code input */}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                  className="mt-3 w-full bg-white text-sm px-3 py-2.5 rounded-lg border border-amber-200 outline-none focus:border-[#f8c21a] transition tracking-[0.4em] text-center font-bold"
+                  placeholder="••••••"
+                />
               </div>
             ) : (
               <div className="flex flex-col gap-1 mb-6" id="reset-email-wrapper">
@@ -1448,6 +1508,13 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               </div>
             )}
 
+            {/* API error display */}
+            {apiError && (
+              <div className="mb-4 text-center">
+                <span className="text-[11px] text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded">{apiError}</span>
+              </div>
+            )}
+
             {resetCodeSent ? (
               <button
                 onClick={() => setCurrentView(ActiveView.NEW_PASSWORD)}
@@ -1458,11 +1525,12 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               </button>
             ) : (
               <button
-                onClick={() => setResetCodeSent(true)}
-                className="w-full bg-stone-900 hover:bg-stone-800 text-white font-semibold py-3 rounded-full text-xs cursor-pointer text-center whitespace-nowrap"
+                onClick={handleSendResetToken}
+                disabled={isSubmitting}
+                className="w-full bg-stone-900 hover:bg-stone-800 text-white font-semibold py-3 rounded-full text-xs cursor-pointer text-center whitespace-nowrap disabled:opacity-50"
                 id="btn-dispatchemail"
               >
-                Send Verification Token
+                {isSubmitting ? 'Sending...' : 'Send Verification Token'}
               </button>
             )}
 
@@ -1508,15 +1576,19 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               />
             </div>
 
+            {apiError && (
+              <div className="mb-4 text-center">
+                <span className="text-[11px] text-red-600 font-semibold bg-red-50 px-3 py-1.5 rounded">{apiError}</span>
+              </div>
+            )}
+
             <button
-              onClick={() => {
-                alert('Password reset successful! You can now log in.');
-                setCurrentView(ActiveView.LOGIN);
-              }}
-              className="w-full bg-[#f8c21a] hover:bg-[#e0ac10] font-bold text-[#3c1d01] py-3 rounded-full text-xs shadow cursor-pointer text-center whitespace-nowrap"
+              onClick={handleResetPassword}
+              disabled={isSubmitting}
+              className="w-full bg-[#f8c21a] hover:bg-[#e0ac10] font-bold text-[#3c1d01] py-3 rounded-full text-xs shadow cursor-pointer text-center whitespace-nowrap disabled:opacity-50"
               id="btn-save-newpass"
             >
-              Save & Log In
+              {isSubmitting ? 'Resetting...' : 'Save & Log In'}
             </button>
           </div>
         )}

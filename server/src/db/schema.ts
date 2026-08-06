@@ -308,3 +308,19 @@ export const mapPinsRelations = relations(mapPins, ({ one }) => ({
     references: [communities.id],
   }),
 }));
+
+// ============================================================
+// VERIFICATION CODES (email verification + password reset)
+// ============================================================
+export const verificationCodes = pgTable('verification_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  code: varchar('code', { length: 6 }).notNull(),
+  type: varchar('type', { length: 30 }).notNull().default('verify_email'), // verify_email | reset_password
+  expiresAt: timestamp('expires_at').notNull(),
+  used: boolean('used').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('verification_codes_email_idx').on(table.email),
+  index('verification_codes_expires_idx').on(table.expiresAt),
+]);
