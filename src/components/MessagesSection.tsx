@@ -123,7 +123,16 @@ export default function MessagesSection({
   };
 
   // Find active thread
-  const activeThread = threads.find(t => t.id === activeThreadId) || threads[0];
+  const activeThread: ChatThread = threads.find(t => t.id === activeThreadId) || threads[0] || {
+    id: '',
+    name: 'No conversations yet',
+    avatar: '',
+    lastMessage: '',
+    timeString: '',
+    category: 'chat',
+    messages: [],
+    unreadCount: 0,
+  };
 
   // Mark thread as read when opened
   useEffect(() => {
@@ -309,6 +318,16 @@ export default function MessagesSection({
 
       {/* MIDDLE PANEL: CHAT INTERACTIVE BOARD */}
       <div className={`${mobileChatOpen ? 'flex' : 'hidden md:flex'} flex-1 h-full flex-col bg-white`} id="middle-chat-lobby">
+        {!activeThreadId && threads.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center p-8 text-center" id="messages-empty-state">
+            <div className="flex flex-col items-center gap-2 text-stone-400">
+              <MessageCircle className="w-8 h-8 text-stone-300" />
+              <p className="text-sm font-semibold text-stone-500">No conversations yet</p>
+              <p className="text-xs">Search for a user or community to start chatting.</p>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Chat partner header rows */}
         <div className="px-4 py-4 md:px-5 border-b border-stone-100 flex justify-between items-center bg-white/50 backdrop-blur-md shrink-0" id="chat-receiver-header">
           <div className="flex items-center gap-2.5 text-left min-w-0" id="receiver-meta">
@@ -431,6 +450,8 @@ export default function MessagesSection({
 
           </div>
         </form>
+        </>
+        )}
       </div>
 
       {/* RIGHT PANEL: CODES WORKSPACE STATUS RAIL */}
