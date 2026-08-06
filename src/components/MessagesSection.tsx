@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatThread, ChatMessage } from '../types';
 import { messagesApi, tasksApi } from '../lib/api';
-import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles, ArrowLeft, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MessagesSectionProps {
