@@ -257,6 +257,18 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Desktop vs mobile (>=768px). Only one NotificationsPanel renders at a time so
+  // the two click-outside handlers never conflict.
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   // Determine active tab from URL
   const path = location.pathname;
   const activeTab =
@@ -335,8 +347,8 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
           </div>
         </div>
 
-        {/* Mobile notifications dropdown */}
-        {notifOpen && (
+        {/* Mobile notifications dropdown (only on mobile so the desktop panel is the sole instance) */}
+        {!isDesktop && notifOpen && (
           <div className="absolute right-4 top-16 z-50" id="mobile-notif-wrap">
             <NotificationsPanel onClose={() => setNotifOpen(false)} onUnreadRefresh={loadUnread} />
           </div>
@@ -418,7 +430,7 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
                   <span className="absolute top-1.5 right-1.5 w-[7px] h-[7px] bg-[#E53935] rounded-full border border-white"></span>
                 )}
               </button>
-              {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
+              {isDesktop && notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} onUnreadRefresh={loadUnread} />}
             </div>
 
             {/* User avatar + profile menu */}
