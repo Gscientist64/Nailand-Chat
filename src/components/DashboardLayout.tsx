@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import NaiLandLogo from './NaiLandLogo';
+import Avatar from './Avatar';
 import { UserProfile } from '../types';
 import { notificationsApi, dashboardApi, communitiesApi } from '../lib/api';
 import {
   LayoutDashboard, MessageSquareCode, Users, HelpCircle, LogOut,
-  Menu, X, Bell, Globe, SlidersHorizontal, Check, Search, Send, Users as UsersIcon
+  Menu, X, Bell, Globe, SlidersHorizontal, Check, Search, Send, Users as UsersIcon, UserCircle
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -317,7 +318,7 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
     { id: 'logout', text: 'Log Out', icon: LogOut, action: onLogout },
   ];
 
-  const profileAvatarUrl = user.avatarUrl || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120';
+  const profileName = `${user.firstName || ''} ${user.secondName || ''}`.trim() || 'Member';
 
   return (
     <div className="bg-[#FFFFFF] min-h-screen text-stone-800 flex flex-col md:flex-row font-sans" id="app-layout-root">
@@ -441,12 +442,11 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
                 id="avatar-container-head"
               >
                 <div className="relative w-10 h-10" id="avatar-ring-head">
-                  <img
-                    src={profileAvatarUrl}
-                    alt={`${user.firstName} ${user.secondName}`}
-                    className="w-10 h-10 rounded-full object-cover border border-stone-200"
-                    referrerPolicy="no-referrer"
-                    id="img-hdr-avatar"
+                  <Avatar
+                    name={profileName}
+                    src={user.avatarUrl}
+                    className="w-10 h-10 rounded-full border border-stone-200"
+                    textClassName="text-sm"
                   />
                   <span className="absolute bottom-0 left-0 w-[11px] h-[11px] bg-[#4CAF50] rounded-full border-2 border-white"></span>
                   <span
@@ -458,7 +458,7 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
                   </span>
                 </div>
                 <div className="flex flex-col text-left hidden lg:block">
-                  <span className="text-xs font-bold text-stone-900 leading-tight">{user.firstName} {user.secondName}</span>
+                  <span className="text-xs font-bold text-stone-900 leading-tight">{profileName}</span>
                   <span className="text-[9px] text-stone-400">{user.region || 'Member'}</span>
                 </div>
               </div>
@@ -466,18 +466,26 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
               {profileOpen && (
                 <div className="absolute right-0 top-14 w-64 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 overflow-hidden text-left" id="profile-menu">
                   <div className="px-4 py-3 border-b border-stone-100 bg-stone-50/60 flex items-center gap-3">
-                    <img
-                      src={profileAvatarUrl}
-                      alt={`${user.firstName} ${user.secondName}`}
-                      className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
-                      referrerPolicy="no-referrer"
+                    <Avatar
+                      name={profileName}
+                      src={user.avatarUrl}
+                      className="w-10 h-10 rounded-full border border-stone-200 shrink-0"
+                      textClassName="text-sm"
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-bold text-stone-900 truncate">{user.firstName} {user.secondName}</span>
+                      <span className="text-sm font-bold text-stone-900 truncate">{profileName}</span>
                       <span className="text-[10px] text-stone-400 truncate">{user.email}</span>
                     </div>
                   </div>
                   <div className="py-1.5">
+                    <button
+                      onClick={() => { setProfileOpen(false); navigate('/app/profile'); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/50 cursor-pointer text-left text-sm text-stone-700"
+                      id="profile-menu-profile"
+                    >
+                      <UserCircle className="w-4 h-4 text-stone-400" style={{ strokeWidth: 1.8 }} />
+                      My Profile
+                    </button>
                     <button
                       onClick={() => { setProfileOpen(false); navigate('/app/help'); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/50 cursor-pointer text-left text-sm text-stone-700"

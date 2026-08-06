@@ -10,6 +10,7 @@ import DashboardHome from './components/DashboardHome';
 import CommunitySection from './components/CommunitySection';
 import CommunityDirectory from './components/CommunityDirectory';
 import MessagesSection from './components/MessagesSection';
+import ProfilePage from './components/ProfilePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ActiveView, DashboardTab, ChatThread } from './types';
 
@@ -182,6 +183,10 @@ function AppContent() {
                   onSelectDirectChat={handleSelectDirectChat}
                 />
               }
+            />
+            <Route
+              path="profile"
+              element={<ProfilePage />}
             />
             <Route
               path="messages"

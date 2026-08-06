@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatThread, ChatMessage } from '../types';
 import { messagesApi, tasksApi } from '../lib/api';
+import Avatar from './Avatar';
 import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles, ArrowLeft, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -215,7 +216,7 @@ export default function MessagesSection({
     <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-60px)] md:h-[calc(100vh-60px)] font-sans" id="messages-section-root">
       
       {/* LEFT CHATS THREADS PANEL */}
-      <div className={`${mobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-80 h-full border-r border-stone-100 flex-col bg-stone-50/40 shrink-0`} id="threads-lhs-panel">
+      <div className={`${mobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-80 h-full border-r border-stone-100 flex-col bg-gradient-to-b from-stone-50 to-white shrink-0`} id="threads-lhs-panel">
         
         {/* Dynamic header row filter tabs */}
         <div className="p-4 border-b border-stone-100 flex flex-col gap-3 text-left" id="threads-header-wrap">
@@ -286,13 +287,7 @@ export default function MessagesSection({
               >
                 {/* Thread Avatar graphic */}
                 <div className="shrink-0 relative" id={`thread-avatar-frame-${thread.id}`}>
-                  {thread.avatar.startsWith('http') ? (
-                    <img className="w-10 h-10 rounded-full object-cover border border-stone-200" src={thread.avatar} alt={thread.name} referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-lg shadow-inner">
-                      {thread.avatar}
-                    </div>
-                  )}
+                  <Avatar name={thread.name} src={thread.avatar} className="w-10 h-10 rounded-full border border-stone-200" textClassName="text-sm" />
                   {hasUnread && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#E53935] rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold text-white">
                       {thread.unreadCount}
@@ -317,7 +312,7 @@ export default function MessagesSection({
       </div>
 
       {/* MIDDLE PANEL: CHAT INTERACTIVE BOARD */}
-      <div className={`${mobileChatOpen ? 'flex' : 'hidden md:flex'} flex-1 h-full flex-col bg-white`} id="middle-chat-lobby">
+      <div className={`${mobileChatOpen ? 'flex' : 'hidden md:flex'} flex-1 h-full flex-col bg-gradient-to-b from-white via-white to-amber-50/30`} id="middle-chat-lobby">
         {!activeThreadId && threads.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-8 text-center" id="messages-empty-state">
             <div className="flex flex-col items-center gap-2 text-stone-400">
@@ -329,7 +324,7 @@ export default function MessagesSection({
         ) : (
         <>
         {/* Chat partner header rows */}
-        <div className="px-4 py-4 md:px-5 border-b border-stone-100 flex justify-between items-center bg-white/50 backdrop-blur-md shrink-0" id="chat-receiver-header">
+        <div className="px-4 py-4 md:px-5 border-b border-stone-100 flex justify-between items-center bg-gradient-to-r from-white to-amber-50/70 backdrop-blur-md shrink-0" id="chat-receiver-header">
           <div className="flex items-center gap-2.5 text-left min-w-0" id="receiver-meta">
             <button
               onClick={() => setMobileChatOpen(false)}
@@ -339,11 +334,7 @@ export default function MessagesSection({
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            {activeThread.avatar.startsWith('http') ? (
-              <img className="w-9 h-9 rounded-full object-cover" src={activeThread.avatar} alt={activeThread.name} referrerPolicy="no-referrer" />
-            ) : (
-              <span className="p-1.5 bg-amber-50 border border-amber-200 rounded-lg text-lg flex items-center justify-center">{activeThread.avatar}</span>
-            )}
+            <Avatar name={activeThread.name} src={activeThread.avatar} className="w-9 h-9 rounded-full" textClassName="text-xs" />
             <div className="flex flex-col" id="receiver-titles">
               <span className="font-serif font-bold text-xs text-stone-900 flex items-center gap-1">
                 <span>{activeThread.name}</span>
@@ -361,7 +352,7 @@ export default function MessagesSection({
         </div>
 
         {/* Conversation Bubbles Scroller */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-stone-50/20" id="conversation-bubbles-window">
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-gradient-to-b from-stone-50/40 to-amber-50/20" id="conversation-bubbles-window">
           {activeThread.messages.map((ms) => (
             <motion.div
               layout
@@ -373,7 +364,7 @@ export default function MessagesSection({
               id={`bubble-${ms.id}`}
             >
               {/* Message avatar */}
-              <img className="w-7 h-7 rounded-full object-cover shrink-0 border border-stone-200/50" src={ms.avatar} alt={ms.sender} referrerPolicy="no-referrer" />
+              <Avatar name={ms.sender} src={ms.avatar} className="w-7 h-7 rounded-full border border-stone-200/50 shrink-0" textClassName="text-[10px]" />
               
               <div className="flex flex-col gap-0.5" id={`bubble-box-${ms.id}`}>
                 <span className="text-[8px] font-mono text-stone-400 pl-1">{ms.sender}</span>
@@ -381,7 +372,7 @@ export default function MessagesSection({
                 <div 
                   className={`p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm
                     ${ms.isMe 
-                      ? 'bg-amber-100 border border-amber-200 text-stone-900 rounded-tr-none' 
+                      ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 font-medium border border-amber-300 rounded-tr-none shadow-md' 
                       : 'bg-white border border-stone-200/60 text-stone-700 rounded-tl-none'}`}
                 >
                   {ms.content}
@@ -399,7 +390,7 @@ export default function MessagesSection({
               className="flex gap-2.5 max-w-[75%] self-start text-left"
               id="typing-indicator"
             >
-              <img className="w-7 h-7 rounded-full object-cover shrink-0 border border-stone-200/50" src={activeThread.avatar} alt={activeThread.name} referrerPolicy="no-referrer" />
+              <Avatar name={activeThread.name} src={activeThread.avatar} className="w-7 h-7 rounded-full border border-stone-200/50 shrink-0" textClassName="text-[10px]" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-[8px] font-mono text-stone-400 pl-1">{activeThread.name}</span>
                 <div className="bg-white border border-stone-200/60 p-3 py-2.5 rounded-2xl rounded-tl-none text-[11px] text-stone-400 flex items-center gap-1.5 shadow-sm">
@@ -441,7 +432,7 @@ export default function MessagesSection({
               
               <button 
                 type="submit" 
-                className="p-2 bg-[#f8c21a] hover:bg-stone-950 hover:text-white rounded-full text-stone-900 transition cursor-pointer shadow-sm whitespace-nowrap"
+                className="p-2 bg-gradient-to-br from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-stone-950 rounded-full transition cursor-pointer shadow-md whitespace-nowrap"
                 id="btn-msg-send"
               >
                 <Send className="w-3.5 h-3.5" />

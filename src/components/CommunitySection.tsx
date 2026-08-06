@@ -36,6 +36,7 @@ import { CommunityFeedPost, CollabOffer, SkillRequest } from '../types';
 import { useAuth } from '../lib/AuthContext';
 import { useCommunities } from '../lib/CommunitiesContext';
 import { feedsApi, messagesApi, communitiesApi } from '../lib/api';
+import Avatar from './Avatar';
 
 interface CommunitySectionProps {
   communityName: string;
@@ -64,6 +65,12 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   // Real community members from API
   const [communityMembers, setCommunityMembers] = useState<any[]>([]);
   const [connectedMembers, setConnectedMembers] = useState<Record<string, boolean>>({});
+  const [memberQuery, setMemberQuery] = useState('');
+
+  // Members filtered by the sidebar search box
+  const filteredMembers = memberQuery.trim()
+    ? communityMembers.filter((m) => (m.name || '').toLowerCase().includes(memberQuery.trim().toLowerCase()))
+    : communityMembers;
 
   // Chat conversation list from API community threads
   const [communitiesForChat, setCommunitiesForChat] = useState<any[]>([]);
@@ -82,9 +89,10 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     communitiesApi.get(currentCommunityId).then((res) => {
       if (res.success && res.data) {
         const members = (res.data.members || []).map((m: any) => ({
-          name: m.userName || m.name || 'Community Member',
+          id: m.userId,
+          name: `${m.firstName || ''} ${m.secondName || ''}`.trim() || 'Community Member',
           rating: m.rating || 4,
-          avatar: m.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+          avatar: m.avatarUrl || '',
           role: m.role || 'Member',
         }));
         setCommunityMembers(members.length > 0 ? members : []);
@@ -566,11 +574,11 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
               
               <div className="flex items-center gap-4 text-left" id="com-jumbotron-profile-card">
                 <div className="relative shrink-0">
-                  <img 
-                    src={currentCommunity?.avatar || 'https://images.unsplash.com/photo-1628005182384-a83a8bd57fbe?q=80&w=120'} 
-                    alt={`${currentCommunity?.name || communityName} Logo`} 
-                    className="w-16 h-16 rounded-full object-cover border-2 border-amber-500 shadow-md bg-stone-100"
-                    referrerPolicy="no-referrer"
+                  <Avatar
+                    name={currentCommunity?.name || communityName}
+                    src={currentCommunity?.avatar}
+                    className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-md bg-stone-100"
+                    textClassName="text-xl"
                   />
                   <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-stone-900"></span>
                 </div>
@@ -629,11 +637,11 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
               <div className="bg-white border border-[#EBEBEB] p-5 rounded-2xl flex flex-col gap-4 shadow-sm" id="com-composer-post-card">
                 
                 <div className="flex gap-3" id="com-composer-body">
-                  <img 
-                    src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120'}
-                    alt="Author avatar"
-                    className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
-                    referrerPolicy="no-referrer"
+                  <Avatar
+                    name={`${user?.firstName || ''} ${user?.secondName || ''}`.trim() || 'You'}
+                    src={user?.avatarUrl}
+                    className="w-10 h-10 rounded-full border border-stone-200 shrink-0"
+                    textClassName="text-sm"
                   />
                   <textarea 
                     value={newPostText}
@@ -872,11 +880,11 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                         {/* Upper row meta */}
                         <div className="flex justify-between items-start mb-3" id={`feed-top-row-${feed.id}`}>
                           <div className="flex items-center gap-3" id={`feed-profile-block-${feed.id}`}>
-                            <img 
-                              src={feed.authorAvatar} 
-                              alt={feed.author} 
-                              className="w-10 h-10 rounded-full border border-stone-200 object-cover"
-                              referrerPolicy="no-referrer"
+                            <Avatar
+                              name={feed.author}
+                              src={feed.authorAvatar}
+                              className="w-10 h-10 rounded-full border border-stone-200"
+                              textClassName="text-sm"
                             />
                             <div className="flex flex-col text-left gap-0.5" id={`feed-author-col-${feed.id}`}>
                               <span className="font-bold text-sm text-stone-900">{feed.author}</span>
@@ -1071,7 +1079,12 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                               <h4 className="font-bold text-stone-900 text-sm">{offer.title}</h4>
                               <p className="text-xs text-stone-500 mt-1 leading-relaxed">{offer.description}</p>
                             </div>
-                            <img src={offer.creatorAvatar} alt={offer.creator} className="w-9 h-9 rounded-full object-cover shrink-0 border border-stone-100" referrerPolicy="no-referrer" />
+                            <Avatar
+                              name={offer.creator}
+                              src={offer.creatorAvatar}
+                              className="w-9 h-9 rounded-full border border-stone-100"
+                              textClassName="text-xs"
+                            />
                           </div>
 
                           {/* Objectives lists */}
@@ -1207,6 +1220,8 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   <input 
                     type="text" 
                     placeholder="Search name, expert, roles..." 
+                    value={memberQuery}
+                    onChange={(e) => setMemberQuery(e.target.value)}
                     className="w-full bg-[#FAFAFA] text-xs border border-stone-200 rounded-full pl-10 pr-4 py-3 outline-none focus:border-[#FF5722] transition"
                     id="sidebar-member-query-input"
                   />
@@ -1214,21 +1229,26 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
 
                 {/* Vertical scroll list of community members matching screens */}
                 <div className="flex flex-col gap-3.5 overflow-y-auto max-h-[420px] pr-1" id="sidebar-members-scroll-flow">
-                  {communityMembers.map((member) => {
+                  {filteredMembers.length === 0 && (
+                    <div className="text-center text-xs text-stone-400 py-6" id="members-empty">
+                      No members found.
+                    </div>
+                  )}
+                  {filteredMembers.map((member) => {
                     const isConnected = connectedMembers[member.name];
                     return (
                       <div 
-                        key={member.name}
+                        key={member.id || member.name}
                         className="flex items-center justify-between border-b border-stone-50 pb-3"
                         id={`sidebar-member-row-${member.name}`}
                       >
                         {/* Member avatar profile details */}
                         <div className="flex items-center gap-2.5">
-                          <img 
-                            src={member.avatar} 
-                            alt={member.name} 
-                            className="w-9 h-9 rounded-full object-cover border border-stone-100"
-                            referrerPolicy="no-referrer"
+                          <Avatar
+                            name={member.name}
+                            src={member.avatar}
+                            className="w-9 h-9 rounded-full border border-stone-100"
+                            textClassName="text-[11px]"
                           />
                           <div className="flex flex-col text-left gap-0.5">
                             <span className="font-bold text-[13px] text-stone-900 leading-none">{member.name}</span>
@@ -1313,16 +1333,19 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
               <h4 className="text-sm font-sans font-extrabold text-stone-900 uppercase tracking-wider">Group Analytics</h4>
               <div className="flex flex-col gap-2 text-xs font-semibold text-stone-500 font-sans">
                 <div className="text-[11px] font-mono text-stone-400 border-b border-stone-200 pb-1 w-full flex justify-between">
-                  <span>Last 2 days activity</span>
+                  <span>Live community stats</span>
                 </div>
-                <div className="flex justify-between items-center text-stone-700 py-0.5" id="metric-analytics-1">
-                  <span>25k members</span>
+                <div className="flex justify-between items-center py-0.5" id="metric-analytics-1">
+                  <span className="text-stone-500">Members</span>
+                  <strong className="text-stone-900">{currentCommunity?.memberCount || 0}</strong>
                 </div>
-                <div className="flex justify-between items-center text-stone-700 py-0.5" id="metric-analytics-2">
-                  <span>60k posts</span>
+                <div className="flex justify-between items-center py-0.5" id="metric-analytics-2">
+                  <span className="text-stone-500">Posts</span>
+                  <strong className="text-stone-900">{feeds.length}</strong>
                 </div>
-                <div className="flex justify-between items-center text-stone-700 py-0.5" id="metric-analytics-3">
-                  <span>890k post views</span>
+                <div className="flex justify-between items-center py-0.5" id="metric-analytics-3">
+                  <span className="text-stone-500">Collab Offers</span>
+                  <strong className="text-stone-900">{offers.length}</strong>
                 </div>
               </div>
             </div>
@@ -1342,7 +1365,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                     : 'border-transparent text-stone-400 hover:text-stone-700'}`}
                 id="btn-resource-media"
               >
-                Shared Media 250+
+                Shared Media
               </button>
 
               <button 
@@ -1353,7 +1376,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                     : 'border-transparent text-stone-400 hover:text-stone-700'}`}
                 id="btn-resource-files"
               >
-                Shared Files 68+
+                Shared Files
               </button>
 
               <button 
@@ -1364,103 +1387,34 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                     : 'border-transparent text-stone-400 hover:text-stone-700'}`}
                 id="btn-resource-links"
               >
-                Shared Links 58+
+                Shared Links
               </button>
             </div>
 
             {/* SHARED MEDIA GRID */}
             {activeResourceTab === 'media' && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4" id="resource-media-view-grid">
-                {[
-                  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300',
-                  'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=300',
-                  'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=300',
-                  'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=300',
-                  'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=300',
-                  'https://images.unsplash.com/photo-1618005198143-e5283b519a7f?q=80&w=300'
-                ].map((mSrc, idx) => (
-                  <div key={idx} className="aspect-square rounded-2xl overflow-hidden border border-stone-200/60 bg-stone-50 shadow-2xs group relative cursor-pointer" id={`media-thumb-${idx}`}>
-                    <img 
-                      src={mSrc} 
-                      alt="Shared digital illustration model asset" 
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center">
-                      <span className="text-[10px] text-white font-bold uppercase tracking-wider bg-black/60 px-2 py-1 rounded-md">View asset</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="py-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200" id="resource-media-view-grid">
+                <ImageIcon className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                <p className="text-sm text-stone-500 font-medium">No shared media yet</p>
+                <p className="text-xs text-stone-400 mt-1">Media shared in this community will appear here.</p>
               </div>
             )}
 
             {/* SHARED FILES LIST TABLE */}
             {activeResourceTab === 'files' && (
-              <div className="border border-stone-200/80 rounded-2xl overflow-hidden" id="resource-files-view-table">
-                <table className="w-full text-xs font-sans text-stone-600">
-                  <thead className="bg-[#FAFAFA] border-b border-borderColor text-left text-stone-500 font-bold">
-                    <tr>
-                      <th className="p-4 pl-5">Document Name</th>
-                      <th className="p-4">File Size</th>
-                      <th className="p-4">Categorized / Role tag</th>
-                      <th className="p-4 pr-5 text-right">Owner</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { name: 'UXUX Document.pdf', size: '15.65kb', tag: 'interactive design', owner: 'Afolabi Ola' },
-                      { name: 'Dashboard Design System v2.fig', size: '142.10kb', tag: 'UI Library tokens', owner: 'Afolabi Emmanuel' },
-                      { name: 'Wireframing Guidelines Book.pdf', size: '48.95kb', tag: 'UX Research', owner: 'Afolabi Victor' },
-                      { name: 'Brand Typography Layout Assets.zip', size: '280.40kb', tag: 'Brand asset pack', owner: 'Afolabi Funke' }
-                    ].map((fItem, fIdx) => (
-                      <tr key={fIdx} className="border-b border-stone-100 hover:bg-stone-50 transition">
-                        <td className="p-4 pl-5 flex items-center gap-2 font-bold text-stone-900">
-                          <FileText className="w-4 h-4 text-rose-500 shrink-0" />
-                          <span>{fItem.name}</span>
-                        </td>
-                        <td className="p-4 font-mono">{fItem.size}</td>
-                        <td className="p-4">
-                          <span className="bg-[#FAFAFA] border border-stone-200 text-stone-550 px-2 py-0.5 rounded text-[10px] font-bold">
-                            {fItem.tag}
-                          </span>
-                        </td>
-                        <td className="p-4 pr-5 text-right font-medium text-stone-700">{fItem.owner}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="py-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200" id="resource-files-view-table">
+                <FileText className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                <p className="text-sm text-stone-500 font-medium">No shared files yet</p>
+                <p className="text-xs text-stone-400 mt-1">Files shared in this community will appear here.</p>
               </div>
             )}
 
             {/* SHARED LINKS GRID */}
             {activeResourceTab === 'links' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="resource-links-view-grid">
-                {[
-                  { title: 'Behance Workspace', desc: 'Creative digital agency visual presentation overview', url: 'https://behance.net/design-showcase', provider: 'Behance' },
-                  { title: 'Figma Library Sandbox', desc: 'Active community components figma design tokens variables', url: 'https://figma.com/file/sandbox', provider: 'Figma' },
-                  { title: 'Concept Presentation Video', desc: 'Youtube presentation walkthrough of onboarding user experience workflow', url: 'https://youtube.com/design-tutorial', provider: 'Youtube' }
-                ].map((lItem, idx) => (
-                  <a 
-                    key={idx} 
-                    href={lItem.url} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="p-4.5 bg-white border border-[#EBEBEB] rounded-2xl flex flex-col justify-between hover:border-[#FF5722] hover:shadow-2xs transition"
-                    id={`link-card-${idx}`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-mono uppercase">{lItem.provider}</span>
-                        <Link2 className="w-4 h-4 text-stone-400" />
-                      </div>
-                      <h4 className="font-extrabold text-stone-900 text-xs">{lItem.title}</h4>
-                      <p className="text-[11px] text-stone-500 mt-1 lines-clamp-2 leading-relaxed">{lItem.desc}</p>
-                    </div>
-                    <span className="text-[10px] text-[#FF5722] font-semibold flex items-center gap-1 mt-3">
-                      Visit attachment link <ExternalLink className="w-3 h-3" />
-                    </span>
-                  </a>
-                ))}
+              <div className="py-10 text-center bg-stone-50 rounded-2xl border border-dashed border-stone-200" id="resource-links-view-grid">
+                <Link2 className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                <p className="text-sm text-stone-500 font-medium">No shared links yet</p>
+                <p className="text-xs text-stone-400 mt-1">Links shared in this community will appear here.</p>
               </div>
             )}
 

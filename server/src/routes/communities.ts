@@ -125,10 +125,19 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Community not found' });
     }
 
-    // Get members
+    // Get members with real user info
     const members = await db
-      .select()
+      .select({
+        userId: communityMembers.userId,
+        role: communityMembers.role,
+        rating: communityMembers.rating,
+        joinedAt: communityMembers.joinedAt,
+        firstName: users.firstName,
+        secondName: users.secondName,
+        avatarUrl: users.avatarUrl,
+      })
       .from(communityMembers)
+      .leftJoin(users, eq(communityMembers.userId, users.id))
       .where(eq(communityMembers.communityId, community.id))
       .limit(50);
 

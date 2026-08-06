@@ -118,7 +118,7 @@ async function seed() {
     const [community] = await db.insert(communities).values(comData).returning();
     createdCommunities.push(community);
 
-    // Add creator as admin
+    // Add creator as admin (owner) — not counted toward the member count
     await db.insert(communityMembers).values({
       communityId: community.id,
       userId: comData.createdBy,
@@ -126,10 +126,10 @@ async function seed() {
       rating: 5,
     });
 
-    // Update member count to reflect real admin membership only
+    // Member count reflects real joined members only (0 until someone joins)
     await db
       .update(communities)
-      .set({ memberCount: 1 })
+      .set({ memberCount: 0 })
       .where(eq(communities.id, community.id));
 
     console.log(`  ✓ Community: ${community.name}`);
