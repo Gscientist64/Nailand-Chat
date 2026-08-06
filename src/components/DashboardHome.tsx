@@ -14,7 +14,10 @@ interface DashboardHomeProps {
 export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat }: DashboardHomeProps) {
   const { isAuthenticated } = useAuth();
   const { communities, isLoading } = useCommunities();
-  const [activeRegion, setActiveRegion] = useState('Creative');
+  const [activeRegion, setActiveRegion] = useState('');
+
+  // Real regions from the backend (distinct regions of registered users)
+  const [regions, setRegions] = useState<{ name: string; count: number }[]>([]);
 
   // Dashboard stats from API
   const [stats, setStats] = useState<{ totalUsers: number; totalCommunities: number; totalCollabs: number; totalMessages: number; totalMemberships: number; totalSkillRequests: number } | null>(null);
@@ -41,18 +44,36 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     feedsApi.getSkillRequests().then((res) => {
       if (res.success && res.data) setSkillRequests(res.data);
     });
+    dashboardApi.regions().then((res) => {
+      if (res.success && res.data) setRegions(res.data);
+    });
   }, []);
 
-  // Suggested region pills structure
-  const suggestedRegions = [
-    { name: 'Creative', icon: '🌍', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]', ringColor: 'border-blue-200' },
-    { name: 'Tech', icon: '🪐', iconBg: 'bg-[#E0F2F1] text-[#00897B]', ringColor: 'border-teal-200' },
-    { name: 'Wellness', icon: '🌺', iconBg: 'bg-[#FFEBEE] text-[#E53935]', ringColor: 'border-rose-200' },
-    { name: 'Business', icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]', ringColor: 'border-slate-200' },
-    { name: 'Politics', icon: '👑', iconBg: 'bg-[#FFF8E1] text-[#FFB300]', ringColor: 'border-amber-200' },
-    { name: 'Economics', icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]', ringColor: 'border-indigo-200' },
-    { name: 'Sciences', icon: '⚛️', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' }
-  ];
+  // Auto-select the most populated region once real data loads
+  useEffect(() => {
+    if (regions.length > 0 && !activeRegion) {
+      setActiveRegion(regions[0].name);
+    }
+  }, [regions, activeRegion]);
+
+  // Region visual metadata (icons/colors) keyed by known region name; fallback for unknown regions
+  const REGION_META: Record<string, { icon: string; iconBg: string; ringColor: string }> = {
+    Africa: { icon: '🌍', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]', ringColor: 'border-blue-200' },
+    Asia: { icon: '🪐', iconBg: 'bg-[#E0F2F1] text-[#00897B]', ringColor: 'border-teal-200' },
+    Europe: { icon: '🌺', iconBg: 'bg-[#FFEBEE] text-[#E53935]', ringColor: 'border-rose-200' },
+    'North America': { icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]', ringColor: 'border-slate-200' },
+    'South America': { icon: '👑', iconBg: 'bg-[#FFF8E1] text-[#FFB300]', ringColor: 'border-amber-200' },
+    Oceania: { icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]', ringColor: 'border-indigo-200' },
+  };
+  const REGION_FALLBACK = { icon: '🌐', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' };
+  const regionMetaFor = (name: string) => REGION_META[name] || REGION_FALLBACK;
+
+  // Region pills = real regions from the backend with member counts
+  const suggestedRegions = regions.map((r) => ({
+    name: r.name,
+    count: r.count,
+    ...regionMetaFor(r.name),
+  }));
 
   // Trending Collabs = real collab offers from users
   const trendingCollabs = offers.slice(0, 3).map((o) => ({
@@ -123,7 +144,15 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
           Suggested Region
         </h3>
         
-        {/* Region Flex Pills Scroller matching the screenshot */}
+        {suggestedRegions.length === 0 ? (
+          <div className="flex items-center justify-center bg-stone-50 border border-dashed border-stone-200 rounded-2xl p-6 text-center" id="regions-empty">
+            <div className="flex flex-col items-center gap-1.5">
+              <Globe className="w-6 h-6 text-stone-300" />
+              <p className="text-sm text-stone-500 font-medium">No regions yet</p>
+              <p className="text-xs text-stone-400">Regions appear here as members join from around the world.</p>
+            </div>
+          </div>
+        ) : (
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none" id="suggested-regions-scroller">
           {suggestedRegions.map((region) => (
             <button
@@ -140,9 +169,11 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
                 {region.icon}
               </div>
               <span className="text-[13px] font-sans font-semibold text-stone-800">{region.name}</span>
+              <span className="text-[11px] font-sans font-medium text-stone-400">{region.count}</span>
             </button>
           ))}
         </div>
+        )}
       </section>
 
       {/* SECTION 2: TRENDING COLLABS CAROUSEL */}
@@ -307,6 +338,19 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
               </div>
             );
           })}
+
+          {/* Empty state when there are no real activity spots yet */}
+          {programPrompts.length === 0 && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center" id="map-empty">
+              <div className="bg-white/90 backdrop-blur-sm border border-dashed border-stone-300 rounded-2xl p-8 text-center shadow-md max-w-sm mx-4">
+                <div className="flex flex-col items-center gap-2">
+                  <MapPin className="w-7 h-7 text-stone-300" />
+                  <p className="text-sm text-stone-600 font-semibold">No active spots yet</p>
+                  <p className="text-xs text-stone-400 leading-relaxed">Community activity spots will appear here as members post collabs and discussions.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Right vertical cosmetic scrollbar track mimicking screenshot */}
           <div className="absolute top-1/4 bottom-1/4 right-3.5 w-1.5 bg-stone-200/50 rounded-full overflow-hidden" id="map-mock-scroll">

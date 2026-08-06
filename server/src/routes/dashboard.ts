@@ -39,6 +39,28 @@ router.get('/stats', optionalAuth, async (_req: Request, res: Response) => {
 });
 
 // ============================================================
+// GET /api/stats/regions — Real regions (from registered users) with member counts
+// ============================================================
+router.get('/stats/regions', optionalAuth, async (_req: Request, res: Response) => {
+  try {
+    const rows = await db
+      .select({
+        name: users.region,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(users)
+      .where(sql`${users.region} IS NOT NULL AND ${users.region} <> ''`)
+      .groupBy(users.region)
+      .orderBy(sql`count(*) desc`);
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Get regions error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
 // GET /api/search/users?q= — Search users by name/interest/skill
 // ============================================================
 router.get('/search/users', optionalAuth, async (req: Request, res: Response) => {

@@ -1,13 +1,12 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { db } from './index.js';
-import { users, communities, communityMembers, chatThreads, threadParticipants, chatMessages, mapPins, notifications } from './schema.js';
+import { users, communities, communityMembers, chatThreads, threadParticipants, chatMessages, notifications } from './schema.js';
 
 async function seed() {
   console.log('🌱 Seeding NaiLand database...\n');
 
   // Clear existing data (dev seed only)
-  await db.delete(mapPins);
   await db.delete(notifications);
   await db.delete(chatMessages);
   await db.delete(threadParticipants);
@@ -127,29 +126,13 @@ async function seed() {
       rating: 5,
     });
 
-    console.log(`  ✓ Community: ${community.name}`);
-  }
-
-  // Add more members to communities
-  for (let i = 0; i < createdCommunities.length; i++) {
-    for (let j = 0; j < createdUsers.length; j++) {
-      if (createdUsers[j].id !== createdCommunities[i].createdBy) {
-        await db.insert(communityMembers).values({
-          communityId: createdCommunities[i].id,
-          userId: createdUsers[j].id,
-          role: 'member',
-          rating: Math.floor(Math.random() * 3) + 3,
-        });
-      }
-    }
-  }
-
-  // Update member counts
-  for (const com of createdCommunities) {
+    // Update member count to reflect real admin membership only
     await db
       .update(communities)
-      .set({ memberCount: createdUsers.length })
-      .where(eq(communities.id, com.id));
+      .set({ memberCount: 1 })
+      .where(eq(communities.id, community.id));
+
+    console.log(`  ✓ Community: ${community.name}`);
   }
 
   // ============================================================
@@ -202,24 +185,7 @@ async function seed() {
   }
 
   // ============================================================
-  // 4. Create map pins (interactive coordinate nodes)
-  // ============================================================
-  const pinData = [
-    { title: 'Program Prompt', description: "Let's discuss computer language beyond the basics.", top: '18%', left: '27%', totalThreads: 9, isLocked: false, communityId: createdCommunities[0].id },
-    { title: 'Design Systems Lab', description: 'Peer review design tokens & component libraries.', top: '32%', left: '64%', totalThreads: 0, isLocked: true, communityId: createdCommunities[1].id },
-    { title: 'Smart Contract Audit', description: 'Review audit smart code before deployment.', top: '38%', left: '18%', totalThreads: 0, isLocked: true, communityId: createdCommunities[3].id },
-    { title: 'React Architecture', description: 'Coordinate on scalable React component architecture.', top: '41%', left: '47%', totalThreads: 9, isLocked: false, communityId: createdCommunities[4].id },
-    { title: 'Brand Design Sprint', description: 'Collaborate on brand guidelines & visual identity.', top: '51%', left: '22%', totalThreads: 0, isLocked: true, communityId: createdCommunities[0].id },
-    { title: 'Web3 Onboarding Flow', description: 'Improve wallet onboarding UX for new users.', top: '55%', left: '66%', totalThreads: 9, isLocked: false, communityId: createdCommunities[3].id },
-  ];
-
-  for (const pin of pinData) {
-    await db.insert(mapPins).values({ ...pin, createdBy: createdUsers[0].id });
-  }
-  console.log(`  ✓ ${pinData.length} map pins`);
-
-  // ============================================================
-  // 5. Create sample notifications for the first user
+  // 4. Create sample notifications for the first user
   // ============================================================
   const sampleNotifications = [
     { userId: createdUsers[0].id, type: 'message', title: 'New message from Afolabi', body: 'Afolabi Emmanuel sent you a message in your workspace.', link: '/messages', isRead: false },

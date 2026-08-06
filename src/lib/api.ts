@@ -157,6 +157,7 @@ export const mapPinsApi = {
 // ============================================================
 export const dashboardApi = {
   stats: () => request<any>('GET', '/api/stats'),
+  regions: () => request<{ name: string; count: number }[]>('GET', '/api/stats/regions'),
   searchUsers: (q: string) => request<any[]>('GET', `/api/search/users?q=${encodeURIComponent(q)}`),
 };
 
