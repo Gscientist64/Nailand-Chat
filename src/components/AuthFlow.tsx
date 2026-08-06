@@ -208,7 +208,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   };
 
   return (
-    <div className="bg-[#fdfcf9] min-h-screen text-stone-800 flex flex-col items-center justify-start py-8 px-4 font-sans select-none" id="auth-flow-root">
+    <div className="bg-[#fdfcf9] min-h-screen text-stone-800 flex flex-col items-center justify-start py-8 px-4 font-sans select-none overflow-x-hidden" id="auth-flow-root">
       
       {/* Small Back Chevron indicator */}
       <div className="w-full max-w-lg mb-4 flex items-center justify-between" id="auth-nav-top">
