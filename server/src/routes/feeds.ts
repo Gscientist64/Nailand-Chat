@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { feedPosts, collabOffers, skillRequests, communities } from '../db/schema.js';
+import { feedPosts, collabOffers, skillRequests, communities, users } from '../db/schema.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc, asc, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -87,12 +87,28 @@ router.post('/:postId/like', authenticate, async (req: Request, res: Response) =
 // COLLAB OFFERS
 // ============================================================
 
-// GET /api/offers — List all collab offers
+// GET /api/offers — List all collab offers (with real creator info)
 router.get('/offers/all', async (_req: Request, res: Response) => {
   try {
     const offers = await db
-      .select()
+      .select({
+        id: collabOffers.id,
+        title: collabOffers.title,
+        description: collabOffers.description,
+        objectives: collabOffers.objectives,
+        roles: collabOffers.roles,
+        collaboratorsCount: collabOffers.collaboratorsCount,
+        projectLength: collabOffers.projectLength,
+        commitment: collabOffers.commitment,
+        monetary: collabOffers.monetary,
+        skillExchange: collabOffers.skillExchange,
+        creatorId: collabOffers.creatorId,
+        createdAt: collabOffers.createdAt,
+        creator: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
+        creatorAvatar: users.avatarUrl,
+      })
       .from(collabOffers)
+      .leftJoin(users, eq(collabOffers.creatorId, users.id))
       .orderBy(desc(collabOffers.createdAt))
       .limit(50);
 
@@ -134,12 +150,24 @@ router.post('/offers', authenticate, validate(createOfferSchema), async (req: Re
 // SKILL REQUESTS
 // ============================================================
 
-// GET /api/skill-requests — List all skill requests
+// GET /api/skill-requests — List all skill requests (with real creator info)
 router.get('/skill-requests/all', async (_req: Request, res: Response) => {
   try {
     const requests = await db
-      .select()
+      .select({
+        id: skillRequests.id,
+        title: skillRequests.title,
+        description: skillRequests.description,
+        roles: skillRequests.roles,
+        projectLength: skillRequests.projectLength,
+        monetary: skillRequests.monetary,
+        creatorId: skillRequests.creatorId,
+        createdAt: skillRequests.createdAt,
+        creator: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
+        creatorAvatar: users.avatarUrl,
+      })
       .from(skillRequests)
+      .leftJoin(users, eq(skillRequests.creatorId, users.id))
       .orderBy(desc(skillRequests.createdAt))
       .limit(50);
 

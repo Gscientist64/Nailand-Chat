@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 interface DashboardHomeProps {
   user: import('../types').UserProfile;
   onSelectCommunity: (comName: string) => void;
-  onSelectDirectChat: (personName: string, avatar: string) => void;
+  onSelectDirectChat: (personName: string, avatar: string, participantId?: string) => void;
 }
 
 export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat }: DashboardHomeProps) {
@@ -82,17 +82,20 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     avatar: o.creatorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
     rating: 4.5,
     desc: o.title + (o.description ? ' — ' + o.description.slice(0, 60) : ''),
-    engagement: o.monetary || `${o.collaboratorsCount || 1} collaborator(s)`
+    engagement: o.monetary || `${o.collaboratorsCount || 1} collaborator(s)`,
+    creatorId: o.creatorId,
   }));
 
   // Skills Needed = real skill requests from users
   const skillsNeededGrid = skillRequests.slice(0, 9).map((r) => ({
     id: `sn-${r.id}`,
     name: r.title || 'Skill Request',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
+    personName: r.creator || 'Community Member',
+    avatar: r.creatorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
     text: r.description || '',
     rating: 4,
-    compensation: r.monetary || (r.roles && r.roles.length ? `Looking for: ${r.roles.join(', ')}` : 'Open to collaborate')
+    compensation: r.monetary || (r.roles && r.roles.length ? `Looking for: ${r.roles.join(', ')}` : 'Open to collaborate'),
+    creatorId: r.creatorId,
   }));
 
   // Interactive map pins (fallback to empty; data comes from API)
@@ -237,7 +240,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
 
                   {/* Collaborate Yellow Link on top right */}
                   <button 
-                    onClick={() => onSelectDirectChat(collab.name, collab.avatar)}
+                    onClick={() => onSelectDirectChat(collab.name, collab.avatar, collab.creatorId)}
                     className="text-[13px] font-sans font-bold text-[#FFB300] hover:text-[#FFA000] hover:underline cursor-pointer transition select-none"
                     id={`tc-link-${collab.id}`}
                   >
@@ -426,7 +429,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
 
                   {/* "I can help" yellow-orange click prompt */}
                   <button 
-                    onClick={() => onSelectDirectChat(card.name, card.avatar)}
+                    onClick={() => onSelectDirectChat(card.personName || card.name, card.avatar, card.creatorId)}
                     className="text-[13px] font-sans font-bold text-[#FFB300] hover:text-[#FFA000] hover:underline cursor-pointer transition select-none"
                     id={`sn-action-lbl-${card.id}`}
                   >

@@ -56,15 +56,16 @@ function AppContent() {
   };
 
   // Direct chat: create/find thread then navigate to messages
-  const handleSelectDirectChat = async (personName: string, avatar: string) => {
+  const handleSelectDirectChat = async (personName: string, avatar: string, participantId?: string) => {
     const match = threads.find(t => t.name === personName);
     let threadId = match?.id;
 
     if (!match) {
+      // createThread requires at least one participant; fall back to self if no other user id is available
       const res = await messagesApi.createThread({
         name: personName,
         avatar: avatar || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=80',
-        participantIds: [],
+        participantIds: participantId ? [participantId] : [user!.id],
         category: 'chat',
       });
       if (res.success && res.data) {
@@ -155,7 +156,7 @@ function AppContent() {
             path="/app"
             element={
               <ProtectedRoute>
-                <DashboardLayout user={user!} onLogout={handleLogout} />
+                <DashboardLayout user={user!} onLogout={handleLogout} onSelectDirectChat={handleSelectDirectChat} />
               </ProtectedRoute>
             }
           >

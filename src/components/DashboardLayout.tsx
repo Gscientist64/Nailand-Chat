@@ -11,14 +11,17 @@ import {
 interface DashboardLayoutProps {
   user: UserProfile;
   onLogout: () => void;
+  onSelectDirectChat?: (personName: string, avatar: string, participantId?: string) => void;
 }
 
 // ============================================================
 // Notifications Dropdown
 // ============================================================
-function NotificationsPanel({ onClose }: { onClose: () => void }) {
+function NotificationsPanel({ onClose, onUnreadRefresh }: { onClose: () => void; onUnreadRefresh?: () => void }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const load = () => {
     notificationsApi.list().then((res) => {
@@ -31,18 +34,42 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
     load();
   }, []);
 
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
   const markRead = async (id: string) => {
     await notificationsApi.markRead(id);
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    onUnreadRefresh?.();
   };
 
   const markAllRead = async () => {
     await notificationsApi.markAllRead();
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    onUnreadRefresh?.();
+  };
+
+  // Mark read then navigate to the linked page
+  const openNotification = (n: any) => {
+    if (!n.isRead) {
+      notificationsApi.markRead(n.id);
+      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
+      onUnreadRefresh?.();
+    }
+    if (n.link) {
+      navigate(n.link);
+      onClose();
+    }
   };
 
   return (
-    <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 overflow-hidden text-left" id="notif-panel">
+    <div ref={panelRef} className="absolute right-0 top-12 w-80 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 overflow-hidden text-left" id="notif-panel">
       <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100 bg-stone-50/60">
         <span className="text-xs font-bold text-stone-800 uppercase tracking-wide">Notifications</span>
         <button onClick={markAllRead} className="text-[10px] text-amber-600 hover:text-amber-700 font-semibold cursor-pointer flex items-center gap-1">
@@ -62,7 +89,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
         {notifications.map((n) => (
           <button
             key={n.id}
-            onClick={() => markRead(n.id)}
+            onClick={() => openNotification(n)}
             className={`w-full text-left px-4 py-3 border-b border-stone-50 hover:bg-amber-50/40 transition cursor-pointer flex gap-2.5
               ${n.isRead ? 'opacity-60' : 'bg-amber-50/30'}`}
             id={`notif-item-${n.id}`}
@@ -85,7 +112,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
 // ============================================================
 // Global Search Dropdown
 // ============================================================
-function GlobalSearch() {
+function GlobalSearch({ onSelectUser }: { onSelectUser?: (name: string, avatar: string, userId: string) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<{ users: any[]; communities: any[] }>({ users: [], communities: [] });
@@ -138,10 +165,16 @@ function GlobalSearch() {
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => query.trim() && setOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter') runSearch(query); }}
           className="w-full bg-[#FAFAFA] border border-[#E0E0E0] rounded-xl pl-11 pr-12 py-3 text-sm text-stone-800 placeholder-stone-400 outline-none focus:border-[#FFC107] transition-all font-sans"
           id="inp-header-search"
         />
-        <button className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-800 cursor-pointer transition" id="btn-header-filter">
+        <button
+          onClick={() => runSearch(query)}
+          title="Search"
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-800 cursor-pointer transition"
+          id="btn-header-filter"
+        >
           <SlidersHorizontal className="w-[18px] h-[18px]" style={{ strokeWidth: 1.8 }} />
         </button>
       </div>
@@ -161,7 +194,15 @@ function GlobalSearch() {
                 {results.users.map((u) => (
                   <button
                     key={u.id}
-                    onClick={() => { setOpen(false); setQuery(''); }}
+                    onClick={() => {
+                      setOpen(false);
+                      setQuery('');
+                      onSelectUser?.(
+                        `${u.firstName} ${u.secondName}`,
+                        u.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120',
+                        u.id
+                      );
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-amber-50/50 cursor-pointer text-left"
                   >
                     <img src={u.avatarUrl || ''} alt={u.firstName} className="w-8 h-8 rounded-full object-cover border border-stone-200" referrerPolicy="no-referrer" />
@@ -206,10 +247,12 @@ function GlobalSearch() {
 // ============================================================
 // Dashboard Layout
 // ============================================================
-export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps) {
+export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -233,9 +276,19 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
     return () => clearInterval(iv);
   }, []);
 
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const go = (tab: string) => {
     setSidebarOpen(false);
     setNotifOpen(false);
+    setProfileOpen(false);
     if (tab === 'logout') { onLogout(); return; }
     navigate(`/app/${tab}`);
   };
@@ -257,27 +310,36 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
     <div className="bg-[#FFFFFF] min-h-screen text-stone-800 flex flex-col md:flex-row font-sans" id="app-layout-root">
 
       {/* MOBILE BAR */}
-      <div className="md:hidden bg-white border-b border-stone-100 px-4 py-3 flex justify-between items-center z-50 sticky top-0" id="mobile-topbar">
-        <NaiLandLogo size="sm" />
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setNotifOpen(!notifOpen)}
-            className="relative p-1.5 text-stone-400 hover:text-stone-800 whitespace-nowrap"
-            id="btn-mobile-bells"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadNotifs > 0 && (
-              <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full"></span>
-            )}
-          </button>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 text-stone-600 hover:text-stone-900 border border-stone-200 rounded-lg whitespace-nowrap"
-            id="btn-mobile-hamburger"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-2 mb-0.5 text-[#100F0F] font-bold" />}
-          </button>
+      <div className="relative md:hidden" id="mobile-topbar-wrap">
+        <div className="bg-white border-b border-stone-100 px-4 py-3 flex justify-between items-center z-50 sticky top-0" id="mobile-topbar">
+          <NaiLandLogo size="sm" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative p-1.5 text-stone-400 hover:text-stone-800 whitespace-nowrap"
+              id="btn-mobile-bells"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadNotifs > 0 && (
+                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full"></span>
+              )}
+            </button>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-1.5 text-stone-600 hover:text-stone-900 border border-stone-200 rounded-lg whitespace-nowrap"
+              id="btn-mobile-hamburger"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-2 mb-0.5 text-[#100F0F] font-bold" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile notifications dropdown */}
+        {notifOpen && (
+          <div className="absolute right-4 top-16 z-50" id="mobile-notif-wrap">
+            <NotificationsPanel onClose={() => setNotifOpen(false)} onUnreadRefresh={loadUnread} />
+          </div>
+        )}
       </div>
 
       {/* SIDEBAR */}
@@ -336,7 +398,7 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
 
         {/* DESKTOP HEADER */}
         <header className="hidden md:flex items-center justify-between px-10 py-5 bg-white border-b border-[#EFEFEF] sticky top-0 z-30 h-[80px]" id="desktop-persistent-header">
-          <GlobalSearch />
+          <GlobalSearch onSelectUser={onSelectDirectChat} />
 
           <div className="flex items-center gap-5" id="header-right-side">
             <button className="p-2 text-stone-700 hover:bg-stone-50 rounded-xl transition cursor-pointer" id="btn-hdr-globe">
@@ -358,25 +420,70 @@ export default function DashboardLayout({ user, onLogout }: DashboardLayoutProps
               {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
             </div>
 
-            {/* User avatar */}
-            <div className="flex items-center gap-2.5 ml-1 select-none" id="avatar-container-head">
-              <div className="relative w-10 h-10" id="avatar-ring-head">
-                <img
-                  src={profileAvatarUrl}
-                  alt={`${user.firstName} ${user.secondName}`}
-                  className="w-10 h-10 rounded-full object-cover border border-stone-200"
-                  referrerPolicy="no-referrer"
-                  id="img-hdr-avatar"
-                />
-                <span className="absolute bottom-0 left-0 w-[11px] h-[11px] bg-[#4CAF50] rounded-full border-2 border-white"></span>
-                <span className="absolute -bottom-0.5 -right-1 bg-stone-100 hover:bg-stone-200 rounded-full p-[2px] border border-stone-200 cursor-pointer transition-shadow" id="badge-hdr-gear">
-                  <SlidersHorizontal className="w-[10px] h-[10px] text-stone-600 rotate-90" />
-                </span>
+            {/* User avatar + profile menu */}
+            <div className="relative" ref={profileRef} id="profile-wrap">
+              <div
+                className="flex items-center gap-2.5 ml-1 select-none cursor-pointer"
+                onClick={() => setProfileOpen(!profileOpen)}
+                id="avatar-container-head"
+              >
+                <div className="relative w-10 h-10" id="avatar-ring-head">
+                  <img
+                    src={profileAvatarUrl}
+                    alt={`${user.firstName} ${user.secondName}`}
+                    className="w-10 h-10 rounded-full object-cover border border-stone-200"
+                    referrerPolicy="no-referrer"
+                    id="img-hdr-avatar"
+                  />
+                  <span className="absolute bottom-0 left-0 w-[11px] h-[11px] bg-[#4CAF50] rounded-full border-2 border-white"></span>
+                  <span
+                    className="absolute -bottom-0.5 -right-1 bg-stone-100 hover:bg-stone-200 rounded-full p-[2px] border border-stone-200 cursor-pointer transition-shadow"
+                    id="badge-hdr-gear"
+                    onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
+                  >
+                    <SlidersHorizontal className="w-[10px] h-[10px] text-stone-600 rotate-90" />
+                  </span>
+                </div>
+                <div className="flex flex-col text-left hidden lg:block">
+                  <span className="text-xs font-bold text-stone-900 leading-tight">{user.firstName} {user.secondName}</span>
+                  <span className="text-[9px] text-stone-400">{user.region || 'Member'}</span>
+                </div>
               </div>
-              <div className="flex flex-col text-left hidden lg:block">
-                <span className="text-xs font-bold text-stone-900 leading-tight">{user.firstName} {user.secondName}</span>
-                <span className="text-[9px] text-stone-400">{user.region || 'Member'}</span>
-              </div>
+
+              {profileOpen && (
+                <div className="absolute right-0 top-14 w-64 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 overflow-hidden text-left" id="profile-menu">
+                  <div className="px-4 py-3 border-b border-stone-100 bg-stone-50/60 flex items-center gap-3">
+                    <img
+                      src={profileAvatarUrl}
+                      alt={`${user.firstName} ${user.secondName}`}
+                      className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-stone-900 truncate">{user.firstName} {user.secondName}</span>
+                      <span className="text-[10px] text-stone-400 truncate">{user.email}</span>
+                    </div>
+                  </div>
+                  <div className="py-1.5">
+                    <button
+                      onClick={() => { setProfileOpen(false); navigate('/app/help'); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/50 cursor-pointer text-left text-sm text-stone-700"
+                      id="profile-menu-help"
+                    >
+                      <HelpCircle className="w-4 h-4 text-stone-400" style={{ strokeWidth: 1.8 }} />
+                      Help Desk
+                    </button>
+                    <button
+                      onClick={() => { setProfileOpen(false); onLogout(); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50/50 cursor-pointer text-left text-sm text-rose-600"
+                      id="profile-menu-logout"
+                    >
+                      <LogOut className="w-4 h-4" style={{ strokeWidth: 1.8 }} />
+                      Log Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
