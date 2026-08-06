@@ -367,11 +367,11 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   };
 
   return (
-    <div className="text-left max-w-7xl mx-auto flex flex-col gap-6 font-sans bg-white min-h-screen text-stone-800" id="community-view-wrapper">
+    <div className="text-left max-w-7xl mx-auto flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8 font-sans bg-white min-h-screen text-stone-800" id="community-view-wrapper">
       
       {/* ----------------- CHAT MODE ACTIVE OVERLAY VIEW ----------------- */}
       {isChatActive ? (
-        <div className="flex flex-col md:flex-row border border-stone-200 rounded-2xl bg-white overflow-hidden shadow-sm h-[750px]" id="community-chat-mode-panel">
+        <div className="flex flex-col md:flex-row border border-stone-200 rounded-2xl bg-white overflow-hidden shadow-sm h-[85vh] md:h-[750px]" id="community-chat-mode-panel">
           
           {/* LEFT COLUMN: ACTIVE COMMUNITIES OR THREADS */}
           <div className="md:w-80 border-r border-stone-200 bg-stone-50 flex flex-col h-full" id="chat-sidebar-com">

@@ -92,7 +92,7 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
     : [];
 
   return (
-    <div className="p-10 text-left max-w-7xl mx-auto flex flex-col gap-8 bg-white font-sans" id="community-directory-root">
+    <div className="px-4 py-6 md:px-8 md:py-8 lg:p-10 text-left max-w-7xl mx-auto flex flex-col gap-6 md:gap-8 bg-white font-sans" id="community-directory-root">
       
       {/* SECTION 1: SUGGESTED REGIONS */}
       <section id="sec-dir-regions" className="flex flex-col gap-3.5">

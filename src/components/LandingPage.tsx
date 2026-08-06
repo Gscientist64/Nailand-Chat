@@ -96,7 +96,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
 
         {/* Navigation Right triggers */}
         <div className="flex items-center gap-3" id="nav-actions">
-          <button className="flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap" id="btn-language">
+          <button className="hidden sm:flex items-center gap-1.5 text-stone-600 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap" id="btn-language">
             <Globe className="w-3.5 h-3.5 text-stone-400" />
             <span>Language</span>
           </button>
@@ -148,7 +148,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
         {/* Floating Collage Showcase Cards */}
         <div className="relative w-full max-w-4xl h-[480px] md:h-[520px] bg-sky-50/20 rounded-3xl overflow-visible border border-stone-100 p-6 flex items-center justify-center" id="hero-collage">
           {/* Main Central Card (Damilola O.) */}
-          <div className="relative z-20 w-80 h-[400px] bg-white rounded-2xl shadow-xl border border-stone-200/50 overflow-hidden flex flex-col group p-3 text-left" id="card-central">
+          <div className="relative z-20 w-full max-w-80 h-[400px] bg-white rounded-2xl shadow-xl border border-stone-200/50 overflow-hidden flex flex-col group p-3 text-left" id="card-central">
             <img 
               className="w-full h-[310px] object-cover rounded-xl" 
               src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600" 
@@ -165,7 +165,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
           </div>
 
           {/* Floating Card 1: Top Left (Hello Afolabi👋 - Deposit) */}
-          <div className="absolute top-6 left-1/4 -start-4 md:left-4 z-30 bg-white/95 border border-amber-100 shadow-lg px-4 py-3.5 rounded-2xl w-72 text-left backdrop-blur-sm hover:scale-[1.02] transition" id="float-card-1">
+          <div className="hidden md:block absolute top-6 left-1/4 -start-4 md:left-4 z-30 bg-white/95 border border-amber-100 shadow-lg px-4 py-3.5 rounded-2xl w-72 text-left backdrop-blur-sm hover:scale-[1.02] transition" id="float-card-1">
             <div className="flex items-center gap-2 mb-1.5" id="float-1-header">
               <span className="font-semibold text-xs text-stone-800" id="hello-afolabi-title">Hello Afolabi</span>
               <span>👋</span>
@@ -180,7 +180,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
           </div>
 
           {/* Floating Card 2: Top Right (Favour John 👩 - Collaborate Request) */}
-          <div className="absolute top-12 right-1/4 -end-4 md:right-4 z-30 bg-white/95 border border-stone-200/60 shadow-lg p-4 rounded-2xl w-64 text-left backdrop-blur-sm hover:scale-[1.02] transition animate-bounce-slow" id="float-card-2">
+          <div className="hidden md:block absolute top-12 right-1/4 -end-4 md:right-4 z-30 bg-white/95 border border-stone-200/60 shadow-lg p-4 rounded-2xl w-64 text-left backdrop-blur-sm hover:scale-[1.02] transition animate-bounce-slow" id="float-card-2">
             <div className="flex items-center gap-2 mb-2" id="float-2-header">
               <img className="w-8 h-8 rounded-full object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120" alt="Favour" referrerPolicy="no-referrer" />
               <div className="flex flex-col" id="float-2-meta">
@@ -202,7 +202,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
           </div>
 
           {/* Floating Card 3: Bottom Left (NFT Community) */}
-          <div className="absolute bottom-6 left-1/4 -start-8 md:left-8 z-30 bg-white/95 border border-stone-200 shadow-md p-4 rounded-2xl w-72 text-left backdrop-blur-sm" id="float-card-3">
+          <div className="hidden md:block absolute bottom-6 left-1/4 -start-8 md:left-8 z-30 bg-white/95 border border-stone-200 shadow-md p-4 rounded-2xl w-72 text-left backdrop-blur-sm" id="float-card-3">
             <div className="flex items-center gap-2 mb-2" id="float-3-header">
               <span className="p-1 bg-emerald-50 rounded-md text-emerald-600">🟢</span>
               <span className="font-semibold text-xs text-stone-900" id="float-3-title">NFT Community</span>
@@ -221,7 +221,7 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
           </div>
 
           {/* Floating Card 4: Bottom Right (First Contribution) */}
-          <div className="absolute bottom-12 right-1/4 -end-8 md:right-8 z-30 bg-white/95 border border-stone-100 shadow-md p-4 rounded-2xl w-64 text-left" id="float-card-4">
+          <div className="hidden md:block absolute bottom-12 right-1/4 -end-8 md:right-8 z-30 bg-white/95 border border-stone-100 shadow-md p-4 rounded-2xl w-64 text-left" id="float-card-4">
             <div className="flex items-center gap-2 mb-2" id="float-4-header">
               <span className="text-stone-500">💼</span>
               <span className="font-semibold text-xs text-stone-900" id="float-4-title">First Contribution</span>

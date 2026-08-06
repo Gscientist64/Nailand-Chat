@@ -119,7 +119,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
   ] : [];
 
   return (
-    <div className="p-10 text-left max-w-7xl mx-auto flex flex-col gap-8 font-sans bg-white" id="dashboard-main-content">
+    <div className="px-4 py-6 md:px-8 md:py-8 lg:p-10 text-left max-w-7xl mx-auto flex flex-col gap-6 md:gap-8 font-sans bg-white" id="dashboard-main-content">
 
       {/* SECTION 0: DASHBOARD STATS */}
       {statCards.length > 0 && (

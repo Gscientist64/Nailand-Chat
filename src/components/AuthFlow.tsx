@@ -227,14 +227,15 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
 
       {(currentView === ActiveView.SIGN_UP || currentView === ActiveView.LOGIN) ? (
         <div 
-          className="relative bg-white border border-[#DBDBDB]/65 rounded-xl flex flex-col items-center justify-start z-10 transition-shadow hover:shadow-lg w-full max-w-[502px] mx-auto"
+          className="relative bg-white border border-[#DBDBDB]/65 rounded-xl flex flex-col items-center justify-start z-10 transition-shadow hover:shadow-lg w-full max-w-[502px] mx-auto px-4 sm:px-8 md:px-10"
           style={{
             boxSizing: 'border-box',
             minHeight: currentView === ActiveView.SIGN_UP ? '956px' : '780px',
             borderWidth: '1px',
             borderColor: 'rgba(219, 219, 219, 0.6)',
             borderRadius: '12px',
-            padding: currentView === ActiveView.SIGN_UP ? '98px 40px 40px' : '65px 40px 40px'
+            paddingTop: currentView === ActiveView.SIGN_UP ? '98px' : '65px',
+            paddingBottom: '40px'
           }}
           id="auth-main-card"
         >
@@ -1076,9 +1077,9 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
         <div 
           className={
             currentView === ActiveView.CONFIRMATION_CODE
-              ? "w-full max-w-[526px] min-w-[300px] bg-white border border-[#DBDBDB]/60 rounded-xl p-10 relative overflow-hidden transition-all duration-300 mx-auto"
+              ? "w-full max-w-[526px] min-w-0 bg-white border border-[#DBDBDB]/60 rounded-xl p-5 md:p-10 relative overflow-hidden transition-all duration-300 mx-auto"
               : (currentView === ActiveView.INTERESTS || currentView === ActiveView.SUGGESTED_REGIONS)
-                ? "w-full max-w-[502px] bg-white border border-[#DBDBDB]/60 rounded-xl p-10 relative overflow-hidden transition-all duration-300 mx-auto"
+                ? "w-full max-w-[502px] bg-white border border-[#DBDBDB]/60 rounded-xl p-5 md:p-10 relative overflow-hidden transition-all duration-300 mx-auto"
                 : "w-full max-w-md bg-white border border-stone-200/60 rounded-3xl p-6 shadow-xl relative overflow-hidden transition-all duration-300 mx-auto"
           }
           style={{

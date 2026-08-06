@@ -214,7 +214,7 @@ function AppContent() {
             <Route
               path="help"
               element={
-                <div className="p-10 text-left max-w-5xl mx-auto flex flex-col gap-6" id="help-deck">
+                <div className="px-4 py-6 md:px-8 md:py-8 lg:p-10 text-left max-w-5xl mx-auto flex flex-col gap-6" id="help-deck">
                   <div className="bg-white border border-stone-200/50 p-6 rounded-2xl" id="help-card">
                     <span className="text-[10px] tracking-widest font-mono text-amber-600 font-bold block mb-1">NAILAND USER ASSIST</span>
                     <h3 className="font-serif font-bold text-xl text-stone-900 border-b border-stone-50 pb-4 mb-4">Workspace Knowledge Hub</h3>

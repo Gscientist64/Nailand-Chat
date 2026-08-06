@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatThread, ChatMessage } from '../types';
 import { messagesApi, tasksApi } from '../lib/api';
-import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles } from 'lucide-react';
+import { Send, Paperclip, Mic, Search, Check, ThumbsUp, FileText, CheckSquare, Square, Clock, Sparkles, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MessagesSectionProps {
@@ -39,6 +39,7 @@ export default function MessagesSection({
       const match = threads.find(t => t.name === initialChatWith);
       if (match) {
         setActiveThreadId(match.id);
+        setMobileChatOpen(true);
       }
       clearDirectChatTrigger?.();
     }
@@ -188,6 +189,9 @@ export default function MessagesSection({
   // Read/Unread filter state
   const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
 
+  // Mobile: show thread list or chat panel one at a time
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
+
   // Filter threads
   const filteredThreads = threads.filter(t => {
     if (activeCategory !== 'all' && t.category !== activeCategory) return false;
@@ -202,7 +206,7 @@ export default function MessagesSection({
     <div className="flex-1 flex overflow-hidden min-h-[calc(100vh-60px)] md:h-[calc(100vh-60px)] font-sans" id="messages-section-root">
       
       {/* LEFT CHATS THREADS PANEL */}
-      <div className="w-full md:w-80 h-full border-r border-stone-100 flex flex-col bg-stone-50/40 shrink-0" id="threads-lhs-panel">
+      <div className={`${mobileChatOpen ? 'hidden md:flex' : 'flex'} w-full md:w-80 h-full border-r border-stone-100 flex-col bg-stone-50/40 shrink-0`} id="threads-lhs-panel">
         
         {/* Dynamic header row filter tabs */}
         <div className="p-4 border-b border-stone-100 flex flex-col gap-3 text-left" id="threads-header-wrap">
@@ -264,7 +268,7 @@ export default function MessagesSection({
             return (
               <div
                 key={thread.id}
-                onClick={() => setActiveThreadId(thread.id)}
+                onClick={() => { setActiveThreadId(thread.id); setMobileChatOpen(true); }}
                 className={`p-3.5 rounded-2xl flex gap-3 cursor-pointer select-none transition-all duration-300
                   ${isActive 
                     ? 'bg-amber-50/60 border border-amber-200/50 shadow-sm' 
@@ -304,10 +308,18 @@ export default function MessagesSection({
       </div>
 
       {/* MIDDLE PANEL: CHAT INTERACTIVE BOARD */}
-      <div className="flex-1 h-full flex flex-col bg-white" id="middle-chat-lobby">
+      <div className={`${mobileChatOpen ? 'flex' : 'hidden md:flex'} flex-1 h-full flex-col bg-white`} id="middle-chat-lobby">
         {/* Chat partner header rows */}
-        <div className="px-5 py-4.5 border-b border-stone-100 flex justify-between items-center bg-white/50 backdrop-blur-md shrink-0" id="chat-receiver-header">
-          <div className="flex items-center gap-2.5 text-left" id="receiver-meta">
+        <div className="px-4 py-4 md:px-5 border-b border-stone-100 flex justify-between items-center bg-white/50 backdrop-blur-md shrink-0" id="chat-receiver-header">
+          <div className="flex items-center gap-2.5 text-left min-w-0" id="receiver-meta">
+            <button
+              onClick={() => setMobileChatOpen(false)}
+              className="md:hidden p-1.5 -ml-1.5 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer shrink-0"
+              id="btn-mobile-back-chat"
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             {activeThread.avatar.startsWith('http') ? (
               <img className="w-9 h-9 rounded-full object-cover" src={activeThread.avatar} alt={activeThread.name} referrerPolicy="no-referrer" />
             ) : (

@@ -342,7 +342,7 @@ export default function DashboardLayout({ user, onLogout, onSelectDirectChat }: 
               className="p-1.5 text-stone-600 hover:text-stone-900 border border-stone-200 rounded-lg whitespace-nowrap"
               id="btn-mobile-hamburger"
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-2 mb-0.5 text-[#100F0F] font-bold" />}
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 text-[#100F0F]" />}
             </button>
           </div>
         </div>
