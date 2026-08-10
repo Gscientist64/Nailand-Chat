@@ -2,25 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Star, Globe } from 'lucide-react';
 import { useCommunities } from '../lib/CommunitiesContext';
 import { communitiesApi } from '../lib/api';
+import { CATEGORIES, categoryMatchesTags } from '../lib/categories';
 import Avatar from './Avatar';
 
 interface CommunityDirectoryProps {
   onSelectCommunity: (comName: string) => void;
 }
-
-// Community categories shown in the "Find Community" panel (per design).
-const CATEGORIES = ['Creative', 'Wellness', 'Business', 'Politics', 'Economics', 'Tech', 'Sciences'];
-
-// Map each category to community tag keywords so filtering is real.
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  Creative: ['Design', 'Figma', 'UI/UX', 'UX', 'Prototyping', 'Adobe', 'Illustrator', 'Photoshop'],
-  Tech: ['Coding', 'React', 'Node', 'TypeScript', 'Web3', 'Blockchain', 'Solidity', 'dApps', 'Tech'],
-  Wellness: ['Wellness', 'Health'],
-  Business: ['Business', 'Marketing', 'Startup'],
-  Politics: ['Politics'],
-  Economics: ['Economics', 'Finance'],
-  Sciences: ['Sciences', 'Science', 'Research'],
-};
 
 export default function CommunityDirectory({ onSelectCommunity }: CommunityDirectoryProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
@@ -47,12 +34,7 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
   const leftList = activeTab === 'favorites' ? myCommunities : communities;
 
   // Right panel results: communities matching the active category (by tags)
-  const categoryResults = communities.filter((c) => {
-    const keywords = CATEGORY_KEYWORDS[activeCategory] || [];
-    if (keywords.length === 0) return false;
-    const tags = (c.tags || []).map((t) => t.toLowerCase());
-    return keywords.some((k) => tags.some((t) => t.includes(k.toLowerCase())));
-  });
+  const categoryResults = communities.filter((c) => categoryMatchesTags(activeCategory, c.tags));
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 lg:p-10 text-left max-w-7xl mx-auto bg-white font-sans" id="community-directory-root">

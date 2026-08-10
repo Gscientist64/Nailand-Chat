@@ -34,8 +34,13 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Confirmation Code Inputs (6-digit)
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  // Remembered first name for a personalized login greeting
+  const [greetingName] = useState<string>(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('nailand_user_first') || '') : ''
+  );
+
+  // Confirmation Code Inputs (4-digit)
+  const [code, setCode] = useState(['', '', '', '']);
   const [confirmState, setConfirmState] = useState<'success' | 'error'>('success');
   const [resentNotice, setResentNotice] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -46,7 +51,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
     const err = await authApi.resendCode(email);
     setIsResending(false);
     if (!err) {
-      setCode(['', '', '', '', '', '']);
+      setCode(['', '', '', '']);
       setResentNotice(true);
       setTimeout(() => setResentNotice(false), 3000);
     } else {
@@ -119,8 +124,8 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
       setApiError('Passwords do not match');
       return;
     }
-    if (resetCode.length !== 6) {
-      setApiError('Please enter the 6-digit code from your email');
+    if (resetCode.length !== 4) {
+      setApiError('Please enter the 4-digit code from your email');
       return;
     }
     setApiError(null);
@@ -789,22 +794,21 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                     <h2 
                       className="font-lora font-normal text-left"
                       style={{
-                        width: '85px',
-                        height: '30px',
+                        maxWidth: '100%',
                         fontSize: '24px',
                         lineHeight: '30px',
                         letterSpacing: '-0.0025em',
-                        color: '#100F0F'
+                        color: '#100F0F',
+                        whiteSpace: 'nowrap'
                       }}
                       id="login-h2"
                     >
-                      Log in
+                      Hello {greetingName || 'there'}
                     </h2>
                     <p 
                       className="font-sans font-normal text-left"
                       style={{
-                        width: '240px',
-                        height: '22px',
+                        maxWidth: '100%',
                         fontSize: '14px',
                         lineHeight: '22px',
                         letterSpacing: '0.003em',
@@ -812,7 +816,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                       }}
                       id="login-p"
                     >
-                      Enter credentials to continue
+                      Log in to continue from where you stop
                     </p>
                   </div>
 
@@ -1162,11 +1166,11 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               </div>
             </div>
 
-            {/* Frame 1618875594: 6-digit Input block */}
+            {/* Frame 1618875594: 4-digit Input block */}
             <div className="flex flex-row justify-center items-center gap-3.5 mb-8" id="code-digits-row">
               {code.map((num, idx) => {
                 const entered = code.join('');
-                const isFull = entered.length === 6;
+                const isFull = entered.length === 4;
                 
                 // Border/Text class determination based on confirm state
                 let borderClass = 'border-stone-200 text-[#0D0C0C] focus:border-stone-800 focus:ring-stone-800';
@@ -1231,7 +1235,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               )}
 
               {/* Informative error tips for wrong code configurations */}
-              {((code.join('').length === 6 && confirmState !== 'success') || confirmState === 'error') && (
+              {((code.join('').length === 4 && confirmState !== 'success') || confirmState === 'error') && (
                 <div className="text-[11px] text-[#C52233] font-sans text-center transition-all" id="wrong-code-error-message">
                   ⚠ Incorrect confirmation code. Please check your email and try again.
                 </div>
@@ -1477,7 +1481,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                   <div id="reset-alert-txt">
                     <span className="font-semibold text-xs text-amber-800" id="reset-sent-title">Reset token sent!</span>
                     <p className="text-[10px] text-amber-700 mt-1" id="reset-sent-body">
-                      We've emailed a 6-digit code to <strong>{resetEmail}</strong>. Enter it below to continue.
+                      We've emailed a 4-digit code to <strong>{resetEmail}</strong>. Enter it below to continue.
                     </p>
                   </div>
                 </div>
@@ -1486,11 +1490,11 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={6}
+                  maxLength={4}
                   value={resetCode}
                   onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
                   className="mt-3 w-full bg-white text-sm px-3 py-2.5 rounded-lg border border-amber-200 outline-none focus:border-[#f8c21a] transition tracking-[0.4em] text-center font-bold"
-                  placeholder="••••••"
+                  placeholder="••••"
                 />
               </div>
             ) : (

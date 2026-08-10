@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useCommunities } from '../lib/CommunitiesContext';
 import { dashboardApi, mapPinsApi, feedsApi } from '../lib/api';
+import { CATEGORIES, categoryMatchesTags } from '../lib/categories';
 import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock, Rocket, Users2, MessageCircle, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -14,10 +15,7 @@ interface DashboardHomeProps {
 export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat }: DashboardHomeProps) {
   const { isAuthenticated } = useAuth();
   const { communities, isLoading } = useCommunities();
-  const [activeRegion, setActiveRegion] = useState('');
-
-  // Real regions from the backend (distinct regions of registered users)
-  const [regions, setRegions] = useState<{ name: string; count: number }[]>([]);
+  const [activeRegion, setActiveRegion] = useState('Creative');
 
   // Dashboard stats from API
   const [stats, setStats] = useState<{ totalUsers: number; totalCommunities: number; totalCollabs: number; totalMessages: number; totalMemberships: number; totalSkillRequests: number } | null>(null);
@@ -44,35 +42,26 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
     feedsApi.getSkillRequests().then((res) => {
       if (res.success && res.data) setSkillRequests(res.data);
     });
-    dashboardApi.regions().then((res) => {
-      if (res.success && res.data) setRegions(res.data);
-    });
   }, []);
 
-  // Auto-select the most populated region once real data loads
-  useEffect(() => {
-    if (regions.length > 0 && !activeRegion) {
-      setActiveRegion(regions[0].name);
-    }
-  }, [regions, activeRegion]);
-
-  // Region visual metadata (icons/colors) keyed by known region name; fallback for unknown regions
+  // Category "region" pills shown on the dashboard (per design)
   const REGION_META: Record<string, { icon: string; iconBg: string; ringColor: string }> = {
-    Africa: { icon: '🌍', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]', ringColor: 'border-blue-200' },
-    Asia: { icon: '🪐', iconBg: 'bg-[#E0F2F1] text-[#00897B]', ringColor: 'border-teal-200' },
-    Europe: { icon: '🌺', iconBg: 'bg-[#FFEBEE] text-[#E53935]', ringColor: 'border-rose-200' },
-    'North America': { icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]', ringColor: 'border-slate-200' },
-    'South America': { icon: '👑', iconBg: 'bg-[#FFF8E1] text-[#FFB300]', ringColor: 'border-amber-200' },
-    Oceania: { icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]', ringColor: 'border-indigo-200' },
+    Creative: { icon: '🎨', iconBg: 'bg-[#E3F2FD] text-[#1E88E5]', ringColor: 'border-blue-200' },
+    Tech: { icon: '💻', iconBg: 'bg-[#E0F2F1] text-[#00897B]', ringColor: 'border-teal-200' },
+    Wellness: { icon: '🌿', iconBg: 'bg-[#FFEBEE] text-[#E53935]', ringColor: 'border-rose-200' },
+    Business: { icon: '💼', iconBg: 'bg-[#ECEFF1] text-[#546E7A]', ringColor: 'border-slate-200' },
+    Politics: { icon: '🏛️', iconBg: 'bg-[#FFF8E1] text-[#FFB300]', ringColor: 'border-amber-200' },
+    Economics: { icon: '📈', iconBg: 'bg-[#E8EAF6] text-[#3949AB]', ringColor: 'border-indigo-200' },
+    Sciences: { icon: '🔬', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' },
   };
   const REGION_FALLBACK = { icon: '🌐', iconBg: 'bg-[#E0F7FA] text-[#00ACC1]', ringColor: 'border-cyan-200' };
   const regionMetaFor = (name: string) => REGION_META[name] || REGION_FALLBACK;
 
-  // Region pills = real regions from the backend with member counts
-  const suggestedRegions = regions.map((r) => ({
-    name: r.name,
-    count: r.count,
-    ...regionMetaFor(r.name),
+  // Region pills = the platform's community categories with real member counts
+  const suggestedRegions = CATEGORIES.map((cat) => ({
+    name: cat,
+    count: communities.filter((c) => categoryMatchesTags(cat, c.tags)).reduce((s, c) => s + (c.memberCount || 0), 0),
+    ...regionMetaFor(cat),
   }));
 
   // Trending Collabs = real collab offers from users

@@ -58,8 +58,8 @@ export async function sendEmail({ to, subject, html, text }: SendEmailOptions): 
   }
 }
 
-// Generate a 6-digit numeric code
-export function generateCode(length = 6): string {
+// Generate a numeric verification code
+export function generateCode(length = 4): string {
   let code = '';
   for (let i = 0; i < length; i++) {
     code += Math.floor(Math.random() * 10).toString();

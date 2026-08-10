@@ -17,7 +17,7 @@ const CODE_TTL_MINUTES = 15;
 // ============================================================
 // Create + persist a code, then send it via email
 async function createAndSendCode(email: string, type: 'verify_email' | 'reset_password') {
-  const code = generateCode(6);
+  const code = generateCode(4);
   const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 
   // Invalidate any previous unused codes for this email+type
@@ -82,7 +82,7 @@ const loginSchema = z.object({
 
 const verifyCodeSchema = z.object({
   email: z.string().email(),
-  code: z.string().length(6),
+  code: z.string().length(4),
 });
 
 // ============================================================
@@ -142,7 +142,7 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
         user: newUser,
         token,
       },
-      message: 'Account created successfully. Check your email for the 6-digit verification code.',
+      message: 'Account created successfully. Check your email for the 4-digit verification code.',
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -310,7 +310,7 @@ router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Requ
 // ============================================================
 const resetPasswordSchema = z.object({
   email: z.string().email(),
-  code: z.string().length(6),
+  code: z.string().length(4),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 

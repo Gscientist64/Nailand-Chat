@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             avatarUrl: res.data.avatarUrl,
           });
           localStorage.setItem('nailand_user_id', res.data.id);
+          localStorage.setItem('nailand_user_first', res.data.firstName || '');
         } else {
           clearToken();
           setTokenState(null);
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         avatarUrl: res.data.user.avatarUrl,
       });
       localStorage.setItem('nailand_user_id', res.data.user.id);
+      localStorage.setItem('nailand_user_first', res.data.user.firstName || '');
       return null;
     }
     return res.error || 'Login failed';
@@ -87,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         region: res.data.user.region || 'Africa',
         avatarUrl: res.data.user.avatarUrl,
       });
+      localStorage.setItem('nailand_user_first', res.data.user.firstName || '');
       return null;
     }
     return res.error || 'Signup failed';
@@ -117,8 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           region: res.data.user.region || 'Africa',
           avatarUrl: res.data.user.avatarUrl,
         });
-        localStorage.setItem('nailand_user_id', res.data.user.id);
-        return null;
+        localStorage.setItem('nailand_user_id', res.data.user.id);        localStorage.setItem('nailand_user_first', res.data.user.firstName || '');        return null;
       }
       return res.error || 'Google sign-in failed';
     } catch (error) {
