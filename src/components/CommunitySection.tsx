@@ -646,7 +646,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   <textarea 
                     value={newPostText}
                     onChange={(e) => setNewPostText(e.target.value)}
-                    placeholder="Share an update with your community..."
+                    placeholder="Create a post"
                     rows={2}
                     className="flex-1 text-xs text-stone-800 bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-xl p-3 outline-none resize-none transition min-h-[60px]"
                     id="composer-text-input"

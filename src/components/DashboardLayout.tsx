@@ -163,7 +163,7 @@ function GlobalSearch({ onSelectUser }: { onSelectUser?: (name: string, avatar: 
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" style={{ strokeWidth: 1.8 }} />
         <input
           type="text"
-          placeholder="Search users, communities..."
+          placeholder="Search for..."
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => query.trim() && setOpen(true)}

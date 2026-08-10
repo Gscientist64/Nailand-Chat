@@ -304,6 +304,12 @@ export default function MessagesSection({
                   <p className={`text-[10px] truncate leading-relaxed ${hasUnread ? 'text-stone-600 font-medium' : 'text-stone-400'}`} id={`thread-last-msg-${thread.id}`}>
                     {thread.lastMessage}
                   </p>
+                  <div className="flex items-center gap-1.5 mt-1" id={`thread-category-tag-${thread.id}`}>
+                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${thread.category === 'community' ? 'bg-sky-50 text-sky-600' : 'bg-violet-50 text-violet-600'}`}>
+                      {thread.category === 'community' ? 'Community' : 'Collaboration'}
+                    </span>
+                    {hasUnread && <span className="text-[8px] font-bold text-rose-500">●</span>}
+                  </div>
                 </div>
               </div>
             );
@@ -345,7 +351,21 @@ export default function MessagesSection({
           </div>
           
           <div className="flex items-center gap-2" id="header-action-indicators">
-            <span className="text-[8px] font-mono bg-amber-50 text-amber-900 border border-amber-100 rounded px-2 py-0.5">
+            {activeThread.category === 'community' && (
+              <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-1.5" id="delivery-time-header">
+                <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[7px] font-mono font-bold text-orange-500 uppercase tracking-wide">Delivery Time</span>
+                  <div className="flex items-center gap-1 font-mono text-[10px] font-bold text-orange-600">
+                    <span>{String(timeLeft.days).padStart(2, '0')}</span><span className="text-orange-300">:</span>
+                    <span>{String(timeLeft.hours).padStart(2, '0')}</span><span className="text-orange-300">:</span>
+                    <span>{String(timeLeft.minutes).padStart(2, '0')}</span><span className="text-orange-300">:</span>
+                    <span>{String(timeLeft.seconds).padStart(2, '0')}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <span className="text-[8px] font-mono bg-amber-50 text-amber-900 border border-amber-100 rounded px-2 py-0.5 hidden sm:inline">
               SECURE MESSAGE SHA-256
             </span>
           </div>
