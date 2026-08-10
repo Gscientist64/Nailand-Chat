@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import NaiLandLogo from './NaiLandLogo';
 import { useCommunities } from '../lib/CommunitiesContext';
+import { feedsApi } from '../lib/api';
 import { ArrowRight, Globe, Layers, Check, Search, ShieldCheck, Cpu, Smartphone, Monitor, Users, FileText, CheckSquare } from 'lucide-react';
 // @ts-ignore
 import sunsetSilhouette from '../assets/images/sunset_community_silhouette_1781078632097.png';
@@ -14,6 +15,18 @@ interface LandingPageProps {
 export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkillsClick }: LandingPageProps) {
   const { communities } = useCommunities();
   const [skillSearch, setSkillSearch] = useState('');
+
+  // Real collaboration log entries (collab offers + skill requests)
+  const [logEntries, setLogEntries] = useState<any[]>([]);
+  useEffect(() => {
+    Promise.all([feedsApi.getOffers(), feedsApi.getSkillRequests()]).then(([offers, requests]) => {
+      const list: any[] = [
+        ...(offers.success ? (offers.data || []).map((o: any) => ({ ...o, kind: 'Collaboration' })) : []),
+        ...(requests.success ? (requests.data || []).map((r: any) => ({ ...r, kind: 'Skill Request' })) : []),
+      ];
+      setLogEntries(list.slice(0, 3));
+    });
+  }, []);
   const [activeStep, setActiveStep] = useState(1);
   const [activeScrollRow, setActiveScrollRow] = useState(0);
 
@@ -379,20 +392,79 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
           <div className="relative z-20 flex flex-col sm:flex-row justify-center items-center gap-[40px] w-full max-w-[453px] h-auto md:mt-0 mt-[40px]" id="home-action-buttons">
             <button 
               onClick={onSignUpClick}
-              className="w-full sm:w-[203px] h-[60px] bg-[#100F0F] hover:bg-stone-900 text-[#FDFDFD] font-sans font-semibold text-[18px] leading-[28px] rounded-[40px] cursor-pointer transition flex items-center justify-center px-8 py-4 select-none active:scale-95 shadow whitespace-nowrap"
-              id="join-community-cta"
+              className="w-full sm:w-[230px] h-[60px] bg-[#100F0F] hover:bg-stone-900 text-[#FDFDFD] font-sans font-semibold text-[17px] leading-[28px] rounded-[40px] cursor-pointer transition flex items-center justify-center px-8 py-4 select-none active:scale-95 shadow whitespace-nowrap"
+              id="start-collaborating-cta"
             >
-              Join Community
+              Start Collaborating <span className="ml-1.5 text-[#FFC107]">↗</span>
             </button>
             <button 
               onClick={onExploreSkillsClick}
-              className="w-full sm:w-[210px] h-[60px] bg-white border border-[#100F0F] hover:bg-stone-50 text-[#100F0F] font-sans font-normal text-[18px] leading-[28px] rounded-[40px] cursor-pointer transition flex items-center justify-center px-8 py-4 select-none active:scale-95 shadow-sm whitespace-nowrap"
-              id="learn-more-cta"
+              className="w-full sm:w-[210px] h-[60px] bg-white border border-[#100F0F] hover:bg-stone-50 text-[#100F0F] font-sans font-normal text-[17px] leading-[28px] rounded-[40px] cursor-pointer transition flex items-center justify-center px-8 py-4 select-none active:scale-95 shadow-sm whitespace-nowrap"
+              id="join-community-cta"
             >
-              Learn More
+              Join the Community
             </button>
           </div>
 
+        </div>
+      </section>
+
+      {/* COLLABORATION LOG */}
+      <section className="py-16 px-4 sm:px-6 bg-[#fdfcf9]" id="collab-log-section">
+        <div className="max-w-4xl mx-auto flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-serif font-bold text-stone-900 tracking-tight">Collaboration Log</h3>
+            <span className="text-[11px] text-stone-400 font-mono">Recorded proof of work</span>
+          </div>
+
+          {logEntries.length === 0 ? (
+            <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center">
+              <p className="text-sm text-stone-500 font-medium">No collaboration entries yet</p>
+              <p className="text-xs text-stone-400 mt-1">Start a collaboration and your verified proof will be recorded here.</p>
+            </div>
+          ) : (
+            logEntries.map((entry) => (
+              <div key={entry.id} className="bg-white border border-stone-200 rounded-2xl overflow-hidden" id={`log-entry-${entry.id}`}>
+                <div className="bg-[#100F0F] px-6 py-4 flex justify-between items-center">
+                  <span className="text-xs font-mono text-stone-300">
+                    Recorded {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : 'Today'}
+                  </span>
+                  <span className="text-[10px] font-bold bg-[#FFC107] text-stone-950 px-2.5 py-1 rounded-full">{entry.kind}</span>
+                </div>
+                <div className="p-6">
+                  <h4 className="text-lg font-serif font-bold text-stone-900">{entry.title}</h4>
+                  <p className="text-sm text-stone-500 mt-1 leading-relaxed line-clamp-2">{entry.description}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {entry.roles && entry.roles.slice(0, 3).map((r: string, idx: number) => (
+                      <span key={idx} className="text-[10px] font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded">{r}</span>
+                    ))}
+                    <span className="text-[10px] text-stone-400">{entry.collaboratorsCount || 1} Collaborator(s)</span>
+                  </div>
+                  <div className="border-t border-stone-100 mt-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-mono font-bold text-stone-400 uppercase">Details</span>
+                      <ul className="mt-1.5 flex flex-col gap-1">
+                        {(entry.objectives || []).map((o: string, idx: number) => (
+                          <li key={idx} className="flex items-center gap-1.5 text-xs text-stone-600">
+                            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />{o}
+                          </li>
+                        ))}
+                        <li className="flex items-center gap-1.5 text-xs text-stone-600">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />Verified
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="sm:text-right">
+                      <span className="text-[9px] font-mono font-bold text-stone-400 uppercase">Entry I.D</span>
+                      <p className="mt-1 text-xs font-mono text-stone-700">NL-{String(entry.id).slice(0, 8).toUpperCase()}</p>
+                      <span className="text-[9px] font-mono font-bold text-stone-400 uppercase mt-3 inline-block">Metrics</span>
+                      <p className="mt-1 text-xs font-mono text-stone-700">Tier {Math.min(5, Math.max(1, entry.collaboratorsCount || 1))}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
