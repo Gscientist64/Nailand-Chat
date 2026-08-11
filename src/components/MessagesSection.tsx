@@ -473,10 +473,9 @@ export default function MessagesSection({
                 <Paperclip className="w-4 h-4" />
               </button>
 
-              {/* Attach popover */}
+              {/* Attach popover (div, not a nested form — nested forms break submission) */}
               {attachOpen && (
-                <form
-                  onSubmit={(e) => { e.preventDefault(); attachLink(); }}
+                <div
                   className="absolute bottom-12 left-0 z-30 w-80 max-w-[80vw] bg-white border border-stone-200 rounded-2xl shadow-xl p-3.5 flex flex-col gap-2.5"
                   id="attach-popover"
                 >
@@ -486,6 +485,7 @@ export default function MessagesSection({
                     autoFocus
                     value={attachUrl}
                     onChange={(e) => setAttachUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); attachLink(); } }}
                     placeholder="https://... (paste a link to share)"
                     className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-amber-400 transition"
                     id="attach-url-input"
@@ -494,11 +494,11 @@ export default function MessagesSection({
                     <button type="button" onClick={() => { setAttachOpen(false); setAttachUrl(''); }} className="text-[11px] text-stone-400 hover:text-stone-700 font-semibold cursor-pointer">
                       Cancel
                     </button>
-                    <button type="submit" disabled={!/^https?:\/\/\S+$/.test(attachUrl.trim())} className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-700 disabled:opacity-40 text-white text-[11px] font-bold rounded-full transition cursor-pointer">
+                    <button type="button" onClick={attachLink} disabled={!/^https?:\/\/\S+$/.test(attachUrl.trim())} className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-700 disabled:opacity-40 text-white text-[11px] font-bold rounded-full transition cursor-pointer">
                       Attach
                     </button>
                   </div>
-                </form>
+                </div>
               )}
             </div>
             
