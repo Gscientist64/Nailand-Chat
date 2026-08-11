@@ -30,7 +30,7 @@ router.get('/:communityId', optionalAuth, async (req: Request, res: Response) =>
         createdAt: feedPosts.createdAt,
         author: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
         authorAvatar: users.avatarUrl,
-        repostedByMe: sql<boolean>`exists(select 1 from ${feedReposts} r where r.post_id = ${feedPosts.id} and r.user_id = ${req.user?.id || ''})`,
+        repostedByMe: sql<boolean>`exists(select 1 from ${feedReposts} r where r.post_id = ${feedPosts.id} and r.user_id = ${req.user?.id ?? null})`,
       })
       .from(feedPosts)
       .leftJoin(users, eq(feedPosts.authorId, users.id))
