@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import NaiLandLogo from './NaiLandLogo';
 import { useCommunities } from '../lib/CommunitiesContext';
-import { feedsApi } from '../lib/api';
+import { feedsApi, dashboardApi } from '../lib/api';
 import { ArrowRight, Globe, Layers, Check, Search, ShieldCheck, Cpu, Smartphone, Monitor, Users, FileText, CheckSquare } from 'lucide-react';
 // @ts-ignore
 import sunsetSilhouette from '../assets/images/sunset_community_silhouette_1781078632097.png';
@@ -25,6 +25,15 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
         ...(requests.success ? (requests.data || []).map((r: any) => ({ ...r, kind: 'Skill Request' })) : []),
       ];
       setLogEntries(list.slice(0, 3));
+    });
+  }, []);
+  // Real total member count from the backend
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  useEffect(() => {
+    dashboardApi.stats().then((res) => {
+      if (res.success && res.data && res.data.totalUsers) {
+        setTotalUsers(res.data.totalUsers);
+      }
     });
   }, []);
   const [activeStep, setActiveStep] = useState(1);
@@ -144,7 +153,9 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
             <img className="w-6 h-6 rounded-full border border-white shadow-sm" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=80" alt="avatar" referrerPolicy="no-referrer" />
           </div>
           <span className="text-[11px] font-mono text-stone-500 whitespace-nowrap" id="members-text">
-            <strong className="text-stone-800 font-bold">55k members</strong> already waiting for you
+            <strong className="text-stone-800 font-bold">
+              {totalUsers ? `${totalUsers.toLocaleString()} ${totalUsers === 1 ? 'member' : 'members'}` : 'Join us'}
+            </strong> {totalUsers ? 'already part of the network' : 'and start collaborating'}
           </span>
         </div>
 
