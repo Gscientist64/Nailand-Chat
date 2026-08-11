@@ -92,6 +92,7 @@ function AppContent() {
           timeString: 'Just now',
           category: 'chat',
           messages: [],
+          createdAt: res.data.createdAt,
         };
         setThreads(prev => [newTh, ...prev]);
         threadId = newTh.id;
