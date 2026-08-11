@@ -78,6 +78,18 @@ export default function MessagesSection({
 
   const [messageText, setMessageText] = useState('');
 
+  // Functional attachment popover (attach a link/file URL to the message)
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachUrl, setAttachUrl] = useState('');
+
+  const attachLink = () => {
+    const url = attachUrl.trim();
+    if (!/^https?:\/\/\S+$/.test(url)) return;
+    setMessageText(prev => (prev ? prev + ' ' : '') + url);
+    setAttachUrl('');
+    setAttachOpen(false);
+  };
+
   // Countdown ticking toward a real delivery estimate (thread created + 30 days)
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -456,9 +468,39 @@ export default function MessagesSection({
         <form onSubmit={handleSendMessage} className="p-4 border-t border-stone-100 bg-white/70 backdrop-blur shrink-0" id="messages-form">
           <div className="flex items-center bg-stone-50 border border-stone-200/80 rounded-full px-4.5 py-2.5 shadow-inner focus-within:border-amber-400 transition" id="messages-input-row">
             
-            <button type="button" className="p-1 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-700 cursor-pointer whitespace-nowrap" id="btn-msg-clip">
-              <Paperclip className="w-4 h-4" />
-            </button>
+            <div className="relative">
+              <button type="button" onClick={() => setAttachOpen(!attachOpen)} className={`p-1 hover:bg-stone-100 rounded-full cursor-pointer whitespace-nowrap transition ${attachOpen ? 'text-amber-600 bg-amber-50' : 'text-stone-400 hover:text-stone-700'}`} id="btn-msg-clip" title="Attach a link or file URL">
+                <Paperclip className="w-4 h-4" />
+              </button>
+
+              {/* Attach popover */}
+              {attachOpen && (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); attachLink(); }}
+                  className="absolute bottom-12 left-0 z-30 w-80 max-w-[80vw] bg-white border border-stone-200 rounded-2xl shadow-xl p-3.5 flex flex-col gap-2.5"
+                  id="attach-popover"
+                >
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold">Attach a link</span>
+                  <input
+                    type="url"
+                    autoFocus
+                    value={attachUrl}
+                    onChange={(e) => setAttachUrl(e.target.value)}
+                    placeholder="https://... (paste a link to share)"
+                    className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-amber-400 transition"
+                    id="attach-url-input"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <button type="button" onClick={() => { setAttachOpen(false); setAttachUrl(''); }} className="text-[11px] text-stone-400 hover:text-stone-700 font-semibold cursor-pointer">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={!/^https?:\/\/\S+$/.test(attachUrl.trim())} className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-700 disabled:opacity-40 text-white text-[11px] font-bold rounded-full transition cursor-pointer">
+                      Attach
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
             
             <input
               type="text"

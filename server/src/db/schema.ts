@@ -187,6 +187,7 @@ export const feedPostsRelations = relations(feedPosts, ({ one, many }) => ({
   }),
   comments: many(feedComments),
   reposts: many(feedReposts),
+  likes: many(feedLikes),
 }));
 
 // ============================================================
@@ -232,6 +233,28 @@ export const feedRepostsRelations = relations(feedReposts, ({ one }) => ({
   }),
   user: one(users, {
     fields: [feedReposts.userId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================
+// FEED LIKES (per-user like tracking — prevents double-liking)
+// ============================================================
+export const feedLikes = pgTable('feed_likes', {
+  postId: uuid('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.postId, table.userId] }),
+]);
+
+export const feedLikesRelations = relations(feedLikes, ({ one }) => ({
+  post: one(feedPosts, {
+    fields: [feedLikes.postId],
+    references: [feedPosts.id],
+  }),
+  user: one(users, {
+    fields: [feedLikes.userId],
     references: [users.id],
   }),
 }));

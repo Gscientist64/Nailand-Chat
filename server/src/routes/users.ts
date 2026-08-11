@@ -16,7 +16,12 @@ const updateProfileSchema = z.object({
   secondName: z.string().min(1).max(100).optional(),
   interests: z.array(z.string()).optional(),
   region: z.string().max(100).optional(),
-  avatarUrl: z.string().url().optional(),
+  // Accept https URLs AND data: URLs (from the in-app profile picture upload)
+  avatarUrl: z
+    .string()
+    .max(2_000_000)
+    .refine((v) => v === '' || /^(https?:\/\/|data:image\/)/.test(v), { message: 'Invalid avatar' })
+    .optional(),
 });
 
 router.put('/profile', authenticate, validate(updateProfileSchema), async (req: Request, res: Response) => {

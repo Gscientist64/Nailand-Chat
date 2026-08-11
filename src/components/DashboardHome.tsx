@@ -5,6 +5,7 @@ import { dashboardApi, mapPinsApi, feedsApi } from '../lib/api';
 import { CATEGORIES, categoryMatchesTags } from '../lib/categories';
 import { Search, MapPin, Sparkles, SlidersHorizontal, ChevronRight, Globe, Check, Users, Star, ArrowLeft, Lock, Rocket, Users2, MessageCircle, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import NigeriaMap from './NigeriaMap';
 
 interface DashboardHomeProps {
   user: import('../types').UserProfile;
@@ -263,21 +264,27 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
         </div>
       </section>
 
-      {/* SECTION 3: METROPOLITAN MAP AREA */}
+      {/* SECTION 3: METROPOLITAN MAP AREA — Nigeria regions map */}
       <section id="sec-metro-map" className="relative w-full rounded-2xl overflow-hidden border border-[#E0E0E0] shadow-sm flex flex-col">
-        {/* Map outer container styled with a stylized aerial metropolitan city blueprint */}
+        {/* Map header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100 bg-white" id="map-header">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-[#FF5722]" />
+            <h3 className="text-sm font-semibold text-stone-900 tracking-tight">Community Map — Nigeria</h3>
+          </div>
+          <span className="text-[10px] font-mono text-stone-400">Regions • 6 Geo-Political Zones</span>
+        </div>
+
+        {/* Map outer container with a real Nigeria map base */}
         <div 
           className="relative w-full aspect-[16/9] bg-[#FAFAFA] overflow-hidden" 
           id="map-canvas"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)), url('https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?q=80&w=1200')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            filter: 'contrast(1.05) saturate(0.8) brightness(0.98)'
-          }}
         >
+          {/* Nigeria map with regions */}
+          <NigeriaMap className="absolute inset-0 w-full h-full object-cover" />
+
           {/* Subtle network connection overlay lines */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" xmlns="http://www.w3.org/2000/svg">
+          <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-15" xmlns="http://www.w3.org/2000/svg">
             <path d="M150 120 L400 240 M420 240 L600 150 M620 150 L800 350 M120 220 L320 380" stroke="#FF9800" strokeWidth="1.5" strokeDasharray="4,4" />
           </svg>
 
@@ -340,15 +347,13 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
             );
           })}
 
-          {/* Empty state when there are no real activity spots yet */}
+          {/* Hint when there are no real activity spots yet — map still shows regions */}
           {programPrompts.length === 0 && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center" id="map-empty">
-              <div className="bg-white/90 backdrop-blur-sm border border-dashed border-stone-300 rounded-2xl p-8 text-center shadow-md max-w-sm mx-4">
-                <div className="flex flex-col items-center gap-2">
-                  <MapPin className="w-7 h-7 text-stone-300" />
-                  <p className="text-sm text-stone-600 font-semibold">No active spots yet</p>
-                  <p className="text-xs text-stone-400 leading-relaxed">Community activity spots will appear here as members post collabs and discussions.</p>
-                </div>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10" id="map-empty">
+              <div className="bg-white/90 backdrop-blur-sm border border-stone-200 rounded-full px-4 py-1.5 text-center shadow-sm">
+                <p className="text-[10px] text-stone-500 font-medium">
+                  No activity spots pinned yet — community spots will appear on the map
+                </p>
               </div>
             </div>
           )}

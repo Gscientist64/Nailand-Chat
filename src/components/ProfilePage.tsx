@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { usersApi, communitiesApi } from '../lib/api';
 import Avatar from './Avatar';
-import { Check, Globe, Mail, Users, Pencil, X, MapPin } from 'lucide-react';
+import { Check, Globe, Mail, Users, Pencil, X, MapPin, Camera, Loader2 } from 'lucide-react';
+import { REGION_OPTIONS, normalizeRegion } from '../lib/regions';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -10,6 +11,8 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
   const [form, setForm] = useState({
@@ -32,12 +35,47 @@ export default function ProfilePage() {
       setForm({
         firstName: user.firstName || '',
         secondName: user.secondName || '',
-        region: user.region || '',
+        region: normalizeRegion(user.region),
         interests: (user.interests || []).join(', '),
         avatarUrl: user.avatarUrl || '',
       });
     }
   }, [user]);
+
+  // Read + compress a selected image into a data-URL (real local upload)
+  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+
+    setUploadingAvatar(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 300;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { setUploadingAvatar(false); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setForm((prev) => ({ ...prev, avatarUrl: dataUrl }));
+        } catch {
+          // fallback: keep raw data URL
+          setForm((prev) => ({ ...prev, avatarUrl: reader.result as string }));
+        }
+        setUploadingAvatar(false);
+      };
+      img.onerror = () => setUploadingAvatar(false);
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => setUploadingAvatar(false);
+    reader.readAsDataURL(file);
+  };
 
   if (!user) {
     return (
@@ -150,21 +188,57 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Region</label>
-              <input
-                value={form.region}
+              <select
+                value={normalizeRegion(form.region)}
                 onChange={(e) => setForm({ ...form, region: e.target.value })}
-                className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3.5 py-3 text-xs outline-none focus:border-amber-400"
-                placeholder="e.g. Africa, Europe"
-              />
+                className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3.5 py-3 text-xs outline-none focus:border-amber-400 cursor-pointer"
+                id="profile-region-select"
+              >
+                {REGION_OPTIONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <span className="text-[9px] text-stone-400 font-mono">Nigeria geo-political zones</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Avatar URL (optional)</label>
-              <input
-                value={form.avatarUrl}
-                onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-                className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3.5 py-3 text-xs outline-none focus:border-amber-400"
-                placeholder="https://..."
-              />
+              <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Profile Picture</label>
+              <div className="flex items-center gap-3" id="avatar-upload-row">
+                <Avatar
+                  name={`${form.firstName || user?.firstName || ''} ${form.secondName || user?.secondName || ''}`.trim() || 'You'}
+                  src={form.avatarUrl}
+                  className="w-14 h-14 rounded-full border-2 border-amber-300 shrink-0"
+                  textClassName="text-base"
+                />
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-stone-900 hover:bg-stone-700 disabled:opacity-50 text-white text-[11px] font-bold rounded-full transition cursor-pointer"
+                    id="btn-upload-avatar"
+                  >
+                    {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                    {uploadingAvatar ? 'Uploading...' : 'Upload Picture'}
+                  </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFile}
+                    className="hidden"
+                    id="avatar-file-input"
+                  />
+                  {form.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, avatarUrl: '' })}
+                      className="text-[10px] text-stone-400 hover:text-rose-500 font-semibold text-left transition cursor-pointer"
+                    >
+                      Remove picture (use initials)
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-1.5 md:col-span-2">
               <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Interests (comma separated)</label>

@@ -177,6 +177,11 @@ export default function CommunitySection({ communityName, onBackToDashboard, onS
           comments: p.comments || 0,
           shares: p.shares || 0,
         })));
+        setLikedPosts((prev) => {
+          const next = { ...prev };
+          res.data.forEach((p: any) => { next[p.id] = !!p.likedByMe; });
+          return next;
+        });
       }
       setFeedsLoading(false);
     });
@@ -378,14 +383,15 @@ export default function CommunitySection({ communityName, onBackToDashboard, onS
     setActiveSubTab('requests'); // show list
   };
 
+  // Real per-user like state
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+
   const toggleLikePost = async (postId: string) => {
-    setFeeds(feeds.map(f => {
-      if (f.id === postId) {
-        return { ...f, likes: f.likes + 1 };
-      }
-      return f;
-    }));
-    await feedsApi.likePost(postId);
+    const res = await feedsApi.likePost(postId);
+    if (res.success && res.data) {
+      setLikedPosts(prev => ({ ...prev, [postId]: res.data.liked }));
+      setFeeds(feeds.map(f => f.id === postId ? { ...f, likes: res.data.likes } : f));
+    }
   };
 
   // Real comment composer state (per post)
@@ -1115,9 +1121,9 @@ export default function CommunitySection({ communityName, onBackToDashboard, onS
                         <div className="flex items-center gap-6 border-t border-stone-50/80 pt-3.5 text-xs text-stone-500 font-medium" id={`feed-interactive-footer-${feed.id}`}>
                           <button 
                             onClick={() => toggleLikePost(feed.id)}
-                            className="flex items-center gap-1.5 hover:text-stone-900 transition whitespace-nowrap cursor-pointer"
+                            className={`flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer ${likedPosts[feed.id] ? 'text-rose-500' : 'hover:text-stone-900'}`}
                           >
-                            <Heart className="w-4 h-4 text-stone-300 hover:text-rose-500 hover:fill-rose-500" />
+                            <Heart className={`w-4 h-4 ${likedPosts[feed.id] ? 'fill-rose-500 text-rose-500' : 'text-stone-300 hover:text-rose-500 hover:fill-rose-500'}`} />
                             <span>{feed.likes}</span>
                           </button>
 

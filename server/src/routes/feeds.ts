@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { feedPosts, feedComments, feedReposts, collabOffers, skillRequests, communities, users } from '../db/schema.js';
+import { feedPosts, feedComments, feedReposts, feedLikes, collabOffers, skillRequests, communities, users } from '../db/schema.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 import { eq, desc, asc, sql, and, count } from 'drizzle-orm';
@@ -31,6 +31,7 @@ router.get('/:communityId', optionalAuth, async (req: Request, res: Response) =>
         author: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
         authorAvatar: users.avatarUrl,
         repostedByMe: sql<boolean>`exists(select 1 from ${feedReposts} r where r.post_id = ${feedPosts.id} and r.user_id = ${req.user?.id ?? null})`,
+        likedByMe: sql<boolean>`exists(select 1 from ${feedLikes} l where l.post_id = ${feedPosts.id} and l.user_id = ${req.user?.id ?? null})`,
       })
       .from(feedPosts)
       .leftJoin(users, eq(feedPosts.authorId, users.id))
@@ -73,11 +74,11 @@ router.post('/:communityId', authenticate, validate(createFeedSchema), async (re
   }
 });
 
-// POST /api/feeds/:postId/like — Toggle like on a post
+// POST /api/feeds/:postId/like — Toggle like on a post (per-user, no double-liking)
 router.post('/:postId/like', authenticate, async (req: Request, res: Response) => {
   try {
     const [post] = await db
-      .select({ likes: feedPosts.likes })
+      .select({ id: feedPosts.id, likes: feedPosts.likes })
       .from(feedPosts)
       .where(eq(feedPosts.id, req.params.postId))
       .limit(1);
@@ -86,13 +87,30 @@ router.post('/:postId/like', authenticate, async (req: Request, res: Response) =
       return res.status(404).json({ success: false, error: 'Post not found' });
     }
 
-    // In production: track per-user likes to prevent double-liking
-    await db
-      .update(feedPosts)
-      .set({ likes: (post.likes || 0) + 1 })
-      .where(eq(feedPosts.id, req.params.postId));
+    const [existing] = await db
+      .select({ postId: feedLikes.postId })
+      .from(feedLikes)
+      .where(and(eq(feedLikes.postId, req.params.postId), eq(feedLikes.userId, req.user!.id)))
+      .limit(1);
 
-    return res.json({ success: true, data: { likes: (post.likes || 0) + 1 } });
+    let liked: boolean;
+    let likes = post.likes || 0;
+
+    if (existing) {
+      await db
+        .delete(feedLikes)
+        .where(and(eq(feedLikes.postId, req.params.postId), eq(feedLikes.userId, req.user!.id)));
+      liked = false;
+      likes = Math.max(0, likes - 1);
+    } else {
+      await db.insert(feedLikes).values({ postId: req.params.postId, userId: req.user!.id });
+      liked = true;
+      likes = likes + 1;
+    }
+
+    await db.update(feedPosts).set({ likes }).where(eq(feedPosts.id, req.params.postId));
+
+    return res.json({ success: true, data: { liked, likes } });
   } catch (error) {
     console.error('Like post error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
