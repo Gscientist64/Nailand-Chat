@@ -23,6 +23,7 @@ declare global {
         avatarUrl: string;
         region: string;
         interests: string[];
+        createdAt?: string | Date | null;
       };
     }
   }
@@ -59,6 +60,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
         avatarUrl: users.avatarUrl,
         region: users.region,
         interests: users.interests,
+        createdAt: users.createdAt,
       })
       .from(users)
       .where(eq(users.id, decoded.userId))
@@ -76,6 +78,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
       region: user.region || 'Africa',
       interests: user.interests || [],
+      createdAt: user.createdAt,
     };
     next();
   } catch (error) {
@@ -100,6 +103,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
           avatarUrl: users.avatarUrl,
           region: users.region,
           interests: users.interests,
+          createdAt: users.createdAt,
         })
         .from(users)
         .where(eq(users.id, decoded.userId))
@@ -114,6 +118,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
           avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120',
           region: user.region || 'Africa',
           interests: user.interests || [],
+          createdAt: user.createdAt,
         };
       }
     }

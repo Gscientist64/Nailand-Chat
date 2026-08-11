@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             interests: res.data.interests || [],
             region: res.data.region || 'Africa',
             avatarUrl: res.data.avatarUrl,
+            createdAt: res.data.createdAt,
           });
           localStorage.setItem('nailand_user_id', res.data.id);
           localStorage.setItem('nailand_user_first', res.data.firstName || '');
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         interests: res.data.user.interests || [],
         region: res.data.user.region || 'Africa',
         avatarUrl: res.data.user.avatarUrl,
+        createdAt: res.data.user.createdAt,
       });
       localStorage.setItem('nailand_user_id', res.data.user.id);
       localStorage.setItem('nailand_user_first', res.data.user.firstName || '');
@@ -88,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         interests: res.data.user.interests || [],
         region: res.data.user.region || 'Africa',
         avatarUrl: res.data.user.avatarUrl,
+        createdAt: res.data.user.createdAt,
       });
       localStorage.setItem('nailand_user_first', res.data.user.firstName || '');
       return null;
@@ -119,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           interests: res.data.user.interests || [],
           region: res.data.user.region || 'Africa',
           avatarUrl: res.data.user.avatarUrl,
+          createdAt: res.data.user.createdAt,
         });
         localStorage.setItem('nailand_user_id', res.data.user.id);        localStorage.setItem('nailand_user_first', res.data.user.firstName || '');        return null;
       }

@@ -269,6 +269,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
       interests: req.user!.interests,
       region: req.user!.region,
       avatarUrl: req.user!.avatarUrl,
+      createdAt: req.user!.createdAt,
     },
   });
 });
