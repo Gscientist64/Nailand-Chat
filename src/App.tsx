@@ -16,12 +16,13 @@ import { ActiveView, DashboardTab, ChatThread } from './types';
 
 // Renders CommunitySection with the URL param resolved inside the Route context
 // (useParams must be called within the matched route, not in the parent component)
-function CommunitySectionRoute({ onBackToDashboard }: { onBackToDashboard: () => void }) {
+function CommunitySectionRoute({ onBackToDashboard, onSelectDirectChat }: { onBackToDashboard: () => void; onSelectDirectChat?: (name: string, avatar: string, participantId?: string) => void }) {
   const { communityName } = useParams();
   return (
     <CommunitySection
       communityName={decodeURIComponent(communityName || '')}
       onBackToDashboard={onBackToDashboard}
+      onSelectDirectChat={onSelectDirectChat}
     />
   );
 }
@@ -52,6 +53,7 @@ function AppContent() {
             unreadCount: t.unreadCount || 0,
             isCommunity: t.isCommunity,
             communityId: t.communityId,
+            createdAt: t.createdAt,
           }));
           setThreads(mapped);
         }
@@ -181,6 +183,7 @@ function AppContent() {
                   user={user!}
                   onSelectCommunity={(comName) => navigate(`/app/community/${encodeURIComponent(comName)}`)}
                   onSelectDirectChat={handleSelectDirectChat}
+                  onSeeAllSkills={() => navigate('/app/community')}
                 />
               }
             />
@@ -214,7 +217,7 @@ function AppContent() {
             />
             <Route
               path="community/:communityName"
-              element={<CommunitySectionRoute onBackToDashboard={() => navigate('/app/community')} />}
+              element={<CommunitySectionRoute onBackToDashboard={() => navigate('/app/community')} onSelectDirectChat={handleSelectDirectChat} />}
             />
             <Route
               path="help"

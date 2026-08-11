@@ -176,13 +176,62 @@ export const feedPosts = pgTable('feed_posts', {
   index('posts_created_idx').on(table.createdAt),
 ]);
 
-export const feedPostsRelations = relations(feedPosts, ({ one }) => ({
+export const feedPostsRelations = relations(feedPosts, ({ one, many }) => ({
   community: one(communities, {
     fields: [feedPosts.communityId],
     references: [communities.id],
   }),
   author: one(users, {
     fields: [feedPosts.authorId],
+    references: [users.id],
+  }),
+  comments: many(feedComments),
+  reposts: many(feedReposts),
+}));
+
+// ============================================================
+// FEED COMMENTS (real comments on feed posts)
+// ============================================================
+export const feedComments = pgTable('feed_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  postId: uuid('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('feed_comments_post_idx').on(table.postId),
+  index('feed_comments_author_idx').on(table.authorId),
+]);
+
+export const feedCommentsRelations = relations(feedComments, ({ one }) => ({
+  post: one(feedPosts, {
+    fields: [feedComments.postId],
+    references: [feedPosts.id],
+  }),
+  author: one(users, {
+    fields: [feedComments.authorId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================
+// FEED REPOSTS (per-user repost tracking)
+// ============================================================
+export const feedReposts = pgTable('feed_reposts', {
+  postId: uuid('post_id').notNull().references(() => feedPosts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.postId, table.userId] }),
+]);
+
+export const feedRepostsRelations = relations(feedReposts, ({ one }) => ({
+  post: one(feedPosts, {
+    fields: [feedReposts.postId],
+    references: [feedPosts.id],
+  }),
+  user: one(users, {
+    fields: [feedReposts.userId],
     references: [users.id],
   }),
 }));

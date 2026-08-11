@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { useCommunities } from '../lib/CommunitiesContext';
 import { dashboardApi, mapPinsApi, feedsApi } from '../lib/api';
@@ -10,9 +10,10 @@ interface DashboardHomeProps {
   user: import('../types').UserProfile;
   onSelectCommunity: (comName: string) => void;
   onSelectDirectChat: (personName: string, avatar: string, participantId?: string) => void;
+  onSeeAllSkills?: () => void;
 }
 
-export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat }: DashboardHomeProps) {
+export default function DashboardHome({ user, onSelectCommunity, onSelectDirectChat, onSeeAllSkills }: DashboardHomeProps) {
   const { isAuthenticated } = useAuth();
   const { communities, isLoading } = useCommunities();
   const [activeRegion, setActiveRegion] = useState('Creative');
@@ -27,6 +28,9 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
   // Real collab offers + skill requests from API
   const [offers, setOffers] = useState<any[]>([]);
   const [skillRequests, setSkillRequests] = useState<any[]>([]);
+
+  // Ref for the trending collabs carousel so the arrow actually scrolls it
+  const trendingRowRef = useRef<HTMLDivElement>(null);
 
   // Fetch stats, map pins, offers, skill requests
   useEffect(() => {
@@ -175,9 +179,14 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
         </h3>
 
         {/* Horizontal flex structure with Left Navigation arrow */}
-        <div className="flex items-center gap-5 relative w-full" id="trending-row">
+        <div className="flex items-center gap-5 relative w-full" id="trending-row" ref={trendingRowRef}>
           {/* Circular Navigation Arrow positioned exactly as the image */}
-          <button className="w-9 h-9 border border-[#E0E0E0] rounded-full flex items-center justify-center bg-white hover:bg-stone-50 active:scale-95 transition cursor-pointer shadow-sm shrink-0" id="btn-trending-left">
+          <button
+            onClick={() => trendingRowRef.current?.scrollBy({ left: -420, behavior: 'smooth' })}
+            aria-label="Scroll trending collabs left"
+            className="w-9 h-9 border border-[#E0E0E0] rounded-full flex items-center justify-center bg-white hover:bg-stone-50 active:scale-95 transition cursor-pointer shadow-sm shrink-0"
+            id="btn-trending-left"
+          >
             <ArrowLeft className="w-4 h-4 text-stone-800" style={{ strokeWidth: 2.2 }} />
           </button>
 
@@ -360,7 +369,7 @@ export default function DashboardHome({ user, onSelectCommunity, onSelectDirectC
           </h3>
 
           <button 
-            onClick={() => onSelectCommunity('Figma Buddies')}
+            onClick={() => (onSeeAllSkills ? onSeeAllSkills() : onSelectCommunity(communities[0]?.name || 'Creative Hub'))}
             className="text-[14px] font-sans font-bold text-[#FFB300] hover:text-[#FFA000] hover:underline cursor-pointer transition"
             id="btn-skills-seeall"
           >

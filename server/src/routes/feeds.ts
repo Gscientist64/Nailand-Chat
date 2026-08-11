@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { feedPosts, collabOffers, skillRequests, communities, users } from '../db/schema.js';
+import { feedPosts, feedComments, feedReposts, collabOffers, skillRequests, communities, users } from '../db/schema.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
-import { eq, desc, asc, sql } from 'drizzle-orm';
+import { eq, desc, asc, sql, and, count } from 'drizzle-orm';
 
 const router = Router();
 
@@ -12,12 +12,28 @@ const router = Router();
 // FEED POSTS
 // ============================================================
 
-// GET /api/feeds/:communityId — Get feed posts for a community
+// GET /api/feeds/:communityId — Get feed posts for a community (with real author info + repost count)
 router.get('/:communityId', optionalAuth, async (req: Request, res: Response) => {
   try {
     const posts = await db
-      .select()
+      .select({
+        id: feedPosts.id,
+        communityId: feedPosts.communityId,
+        authorId: feedPosts.authorId,
+        content: feedPosts.content,
+        images: feedPosts.images,
+        videoUrl: feedPosts.videoUrl,
+        attachmentTypes: feedPosts.attachmentTypes,
+        likes: feedPosts.likes,
+        comments: feedPosts.comments,
+        shares: feedPosts.shares,
+        createdAt: feedPosts.createdAt,
+        author: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
+        authorAvatar: users.avatarUrl,
+        repostedByMe: sql<boolean>`exists(select 1 from ${feedReposts} r where r.post_id = ${feedPosts.id} and r.user_id = ${req.user?.id || ''})`,
+      })
       .from(feedPosts)
+      .leftJoin(users, eq(feedPosts.authorId, users.id))
       .where(eq(feedPosts.communityId, req.params.communityId))
       .orderBy(desc(feedPosts.createdAt))
       .limit(50);
@@ -79,6 +95,130 @@ router.post('/:postId/like', authenticate, async (req: Request, res: Response) =
     return res.json({ success: true, data: { likes: (post.likes || 0) + 1 } });
   } catch (error) {
     console.error('Like post error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// FEED COMMENTS
+// ============================================================
+
+// GET /api/feeds/:postId/comments — List real comments for a post
+router.get('/:postId/comments', async (req: Request, res: Response) => {
+  try {
+    const comments = await db
+      .select({
+        id: feedComments.id,
+        postId: feedComments.postId,
+        authorId: feedComments.authorId,
+        content: feedComments.content,
+        createdAt: feedComments.createdAt,
+        author: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
+        authorAvatar: users.avatarUrl,
+      })
+      .from(feedComments)
+      .leftJoin(users, eq(feedComments.authorId, users.id))
+      .where(eq(feedComments.postId, req.params.postId))
+      .orderBy(asc(feedComments.createdAt))
+      .limit(100);
+
+    return res.json({ success: true, data: comments });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/feeds/:postId/comments — Add a real comment
+const createCommentSchema = z.object({
+  content: z.string().min(1).max(2000),
+});
+
+router.post('/:postId/comments', authenticate, validate(createCommentSchema), async (req: Request, res: Response) => {
+  try {
+    const [post] = await db
+      .select({ id: feedPosts.id })
+      .from(feedPosts)
+      .where(eq(feedPosts.id, req.params.postId))
+      .limit(1);
+    if (!post) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
+    }
+
+    const [comment] = await db
+      .insert(feedComments)
+      .values({ postId: req.params.postId, authorId: req.user!.id, content: req.body.content })
+      .returning();
+
+    await db
+      .update(feedPosts)
+      .set({ comments: sql`${feedPosts.comments} + 1` })
+      .where(eq(feedPosts.id, req.params.postId));
+
+    const [full] = await db
+      .select({
+        id: feedComments.id,
+        postId: feedComments.postId,
+        authorId: feedComments.authorId,
+        content: feedComments.content,
+        createdAt: feedComments.createdAt,
+        author: sql<string>`trim(${users.firstName} || ' ' || ${users.secondName})`,
+        authorAvatar: users.avatarUrl,
+      })
+      .from(feedComments)
+      .leftJoin(users, eq(feedComments.authorId, users.id))
+      .where(eq(feedComments.id, comment.id))
+      .limit(1);
+
+    return res.status(201).json({ success: true, data: full });
+  } catch (error) {
+    console.error('Create comment error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// FEED REPOSTS (per-user toggle)
+// ============================================================
+
+// POST /api/feeds/:postId/repost — Toggle a repost for the current user
+router.post('/:postId/repost', authenticate, async (req: Request, res: Response) => {
+  try {
+    const [post] = await db
+      .select({ id: feedPosts.id, shares: feedPosts.shares })
+      .from(feedPosts)
+      .where(eq(feedPosts.id, req.params.postId))
+      .limit(1);
+    if (!post) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
+    }
+
+    const [existing] = await db
+      .select({ postId: feedReposts.postId })
+      .from(feedReposts)
+      .where(and(eq(feedReposts.postId, req.params.postId), eq(feedReposts.userId, req.user!.id)))
+      .limit(1);
+
+    let reposted: boolean;
+    let shares = post.shares || 0;
+
+    if (existing) {
+      await db
+        .delete(feedReposts)
+        .where(and(eq(feedReposts.postId, req.params.postId), eq(feedReposts.userId, req.user!.id)));
+      reposted = false;
+      shares = Math.max(0, shares - 1);
+    } else {
+      await db.insert(feedReposts).values({ postId: req.params.postId, userId: req.user!.id });
+      reposted = true;
+      shares = shares + 1;
+    }
+
+    await db.update(feedPosts).set({ shares }).where(eq(feedPosts.id, req.params.postId));
+
+    return res.json({ success: true, data: { reposted, shares } });
+  } catch (error) {
+    console.error('Repost toggle error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

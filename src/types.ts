@@ -48,6 +48,7 @@ export interface ChatThread {
   unreadCount?: number;
   isCommunity?: boolean;
   communityId?: string;
+  createdAt?: string;
 }
 
 export interface SkillNeedCard {

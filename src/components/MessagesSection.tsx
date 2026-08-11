@@ -78,32 +78,34 @@ export default function MessagesSection({
 
   const [messageText, setMessageText] = useState('');
 
-  // Countdowns ticking calculations: Days:Hours:Mins:Seconds
+  // Countdown ticking toward a real delivery estimate (thread created + 30 days)
   const [timeLeft, setTimeLeft] = useState({
-    days: 4,
-    hours: 12,
-    minutes: 55,
-    seconds: 12
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else if (prev.days > 0) {
-          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
+    const current = threads.find(t => t.id === activeThreadId) || threads[0];
+    const activeCreated = current?.createdAt;
+    if (!activeCreated) return;
+    const target = new Date(activeCreated).getTime() + 30 * 24 * 60 * 60 * 1000;
 
+    const update = () => {
+      const diff = Math.max(0, target - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+
+    update();
+    const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeThreadId, threads]);
 
   // Shared task checklists from API
   const [tasks, setTasks] = useState<any[]>([]);
@@ -134,6 +136,28 @@ export default function MessagesSection({
     messages: [],
     unreadCount: 0,
   };
+
+  // Derive real shared files from the active thread's messages (URLs / file-like links)
+  const sharedFileLinks: Array<{ id: string; name: string; url?: string; sender: string }> = (activeThread.messages || []).flatMap((m) => {
+    const links: Array<{ id: string; name: string; url?: string; sender: string }> = [];
+    const found: string[] = [];
+    const urlRe = /(https?:\/\/[^\s]+)/g;
+    const fileRe = /([^\s/]+\.(?:pdf|zip|docx?|xlsx?|pptx?|png|jpe?g|gif|webp|fig|sketch|mp4|mov|mp3|wav)(?:\?[^\s]*)?)/gi;
+    const matches = (m.content.match(urlRe) || []).concat(m.content.match(fileRe) || []);
+    matches.forEach((x, idx) => {
+      const clean = x.replace(/[.,;:!?]+$/, '');
+      if (!clean || found.includes(clean)) return;
+      found.push(clean);
+      const isFile = /\.(pdf|zip|docx?|xlsx?|pptx?|png|jpe?g|gif|webp|fig|sketch|mp4|mov|mp3|wav)(\?|$)/i.test(clean);
+      links.push({
+        id: `${m.id}-${idx}`,
+        name: isFile ? clean.split(/[?#]/)[0].split('/').pop() || clean : clean,
+        url: /^https?:\/\//.test(clean) ? clean : undefined,
+        sender: m.sender || 'Member',
+      });
+    });
+    return links;
+  });
 
   // Mark thread as read when opened
   useEffect(() => {
@@ -470,7 +494,7 @@ export default function MessagesSection({
         <div className="border-b border-stone-50 pb-4 mb-4 text-left" id="workspace-rail-hdr">
           <span className="text-[8px] font-mono tracking-widest text-[#ea580c] font-bold">WORKSPACE MATRIX</span>
           <h4 className="font-serif font-bold text-sm text-stone-900 flex items-center gap-1.5 mt-0.5">
-            <span>Mobile App Product</span>
+            <span>{activeThread.name}</span>
             <Sparkles className="w-3.5 h-3.5 text-[#f8c21a] animate-pulse" />
           </h4>
         </div>
@@ -507,15 +531,17 @@ export default function MessagesSection({
           </div>
         </div>
 
-        {/* Progress Bar and Metra */}
+        {/* Progress Bar and Metra — computed from the real shared task checklist */}
         <div className="mb-5 text-left" id="workspace-prod-progress">
           <div className="flex justify-between items-baseline text-[10px] text-stone-500 font-mono mb-1.5" id="val-perc-lbl">
             <span>WORK PRODUCT INTEGRITY</span>
-            <strong className="text-stone-800 font-medium">82% completed</strong>
+            <strong className="text-stone-800 font-medium">
+              {tasks.length > 0 ? `${Math.round((tasks.filter(t => t.checked).length / tasks.length) * 100)}% completed` : 'No tasks yet'}
+            </strong>
           </div>
           
           <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden" id="bar-back">
-            <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: '82%' }}></div>
+            <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${tasks.length > 0 ? Math.round((tasks.filter(t => t.checked).length / tasks.length) * 100) : 0}%` }}></div>
           </div>
         </div>
 
@@ -544,26 +570,33 @@ export default function MessagesSection({
           </div>
         </div>
 
-        {/* Shared Links documentation assets list panel */}
+        {/* Shared Links documentation assets list panel — real shared messages only */}
         <div className="text-left" id="workspace-shared-assets">
           <span className="text-[8px] font-mono tracking-widest text-stone-400 uppercase font-bold block mb-2">SHARED MEDIA & FILES</span>
           
           <div className="flex flex-col gap-2" id="shared-assets-rows">
-            <div className="p-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-155 rounded-xl flex items-center gap-2.5 cursor-pointer" id="pdf-asset-card">
-              <FileText className="w-6 h-6 text-rose-500 shrink-0" />
-              <div className="flex flex-col overflow-hidden text-left" id="pdf-lbl">
-                <span className="text-[9px] font-bold text-stone-800 truncate">figma-buddies-wireframes.pdf</span>
-                <span className="text-[7px] text-stone-400 font-mono">4.2 MB • Adobe Reader Draft</span>
+            {sharedFileLinks.length === 0 && (
+              <div className="p-3 bg-stone-50 border border-stone-100 rounded-xl text-left" id="shared-assets-empty">
+                <p className="text-[9px] text-stone-400 font-medium">No shared files yet.</p>
+                <p className="text-[8px] text-stone-300 font-mono mt-0.5">Files shared in this chat will appear here.</p>
               </div>
-            </div>
-
-            <div className="p-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-155 rounded-xl flex items-center gap-2.5 cursor-pointer" id="zip-asset-card">
-              <FileText className="w-6 h-6 text-amber-500 shrink-0" />
-              <div className="flex flex-col overflow-hidden text-left" id="zip-lbl">
-                <span className="text-[9px] font-bold text-stone-800 truncate">nailand-brand-guidelines.zip</span>
-                <span className="text-[7px] text-stone-400 font-mono">12.8 MB • WinZip Archive Asset</span>
+            )}
+            {sharedFileLinks.map((f: any) => (
+              <div
+                key={f.id}
+                className="p-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-100 rounded-xl flex items-center gap-2.5 cursor-pointer"
+                onClick={() => {
+                  if (f.url && /^https?:\/\//.test(f.url)) window.open(f.url, '_blank');
+                }}
+                id={`shared-asset-${f.id}`}
+              >
+                <FileText className="w-6 h-6 text-rose-500 shrink-0" />
+                <div className="flex flex-col overflow-hidden text-left">
+                  <span className="text-[9px] font-bold text-stone-800 truncate">{f.name || 'Shared file'}</span>
+                  <span className="text-[7px] text-stone-400 font-mono">{f.sender || 'Shared in chat'}</span>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
 

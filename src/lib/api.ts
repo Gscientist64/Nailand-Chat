@@ -169,6 +169,10 @@ export const feedsApi = {
   createPost: (communityId: string, data: { content: string; images?: string[]; videoUrl?: string }) =>
     request<any>('POST', `/api/feeds/${communityId}`, data),
   likePost: (postId: string) => request<any>('POST', `/api/feeds/${postId}/like`),
+  getComments: (postId: string) => request<any[]>('GET', `/api/feeds/${postId}/comments`),
+  createComment: (postId: string, content: string) =>
+    request<any>('POST', `/api/feeds/${postId}/comments`, { content }),
+  toggleRepost: (postId: string) => request<any>('POST', `/api/feeds/${postId}/repost`),
   getOffers: () => request<any[]>('GET', '/api/feeds/offers/all'),
   createOffer: (data: any) => request<any>('POST', '/api/feeds/offers', data),
   getSkillRequests: () => request<any[]>('GET', '/api/feeds/skill-requests/all'),

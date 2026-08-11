@@ -1927,8 +1927,8 @@ export default function LandingPage({ onSignUpClick, onLogInClick, onExploreSkil
                         {/* Manage Asset */}
                         <div className="mt-auto pt-1 flex justify-center shrink-0" id="wallet-screen-white-footer">
                           <div 
-                            className="bg-stone-950 hover:bg-black text-[7.5px] text-white flex items-center gap-1 rounded-full px-2 py-0.5 cursor-pointer transition font-mono"
-                            onClick={() => alert("Manage Assets panel loaded!")}
+                            className="bg-stone-950 text-[7.5px] text-white flex items-center gap-1 rounded-full px-2 py-0.5 font-mono"
+                            title="Asset management panel"
                           >
                             <span>⚙️</span> Manage Asset
                           </div>

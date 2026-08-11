@@ -41,9 +41,10 @@ import Avatar from './Avatar';
 interface CommunitySectionProps {
   communityName: string;
   onBackToDashboard: () => void;
+  onSelectDirectChat?: (personName: string, avatar: string, participantId?: string) => void;
 }
 
-export default function CommunitySection({ communityName, onBackToDashboard }: CommunitySectionProps) {
+export default function CommunitySection({ communityName, onBackToDashboard, onSelectDirectChat }: CommunitySectionProps) {
   const { user } = useAuth();
   const { communities } = useCommunities();
   const currentCommunity = communities.find((c) => c.name === communityName);
@@ -188,6 +189,26 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
   const [draftAttachments, setDraftAttachments] = useState<Array<{ type: 'image' | 'video'; url: string }>>([]);
   const [draftAttachmentIndex, setDraftAttachmentIndex] = useState<number>(0);
   const [isDraftPlayingVideo, setIsDraftPlayingVideo] = useState<boolean>(false);
+
+  // Inline media URL input (replaces the old browser prompt()) — no demo defaults
+  const [mediaInput, setMediaInput] = useState<{ type: 'image' | 'video' } | null>(null);
+  const [mediaUrl, setMediaUrl] = useState('');
+
+  const openMediaInput = (type: 'image' | 'video') => {
+    setMediaUrl('');
+    setMediaInput({ type });
+  };
+
+  const attachMediaFromInput = () => {
+    const url = mediaUrl.trim();
+    if (!url || !mediaInput) return;
+    if (!/^https?:\/\/\S+$/.test(url)) return;
+    setDraftAttachments([...draftAttachments, { type: mediaInput.type, url }]);
+    setDraftAttachmentIndex(draftAttachments.length);
+    setIsDraftPlayingVideo(false);
+    setMediaInput(null);
+    setMediaUrl('');
+  };
 
   // Keep track of the slide index / playing video state inside feed streams
   const [feedMediaIndices, setFeedMediaIndices] = useState<Record<string, number>>({});
@@ -367,10 +388,73 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
     await feedsApi.likePost(postId);
   };
 
-  const handleConnectMember = (name: string) => {
+  // Real comment composer state (per post)
+  const [commentBoxOpen, setCommentBoxOpen] = useState<Record<string, boolean>>({});
+  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, any[]>>({});
+  const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
+
+  // Real repost state (per post)
+  const [repostedPosts, setRepostedPosts] = useState<Record<string, boolean>>({});
+  const [shareCopied, setShareCopied] = useState<Record<string, boolean>>({});
+
+  const toggleCommentBox = async (postId: string) => {
+    const open = !commentBoxOpen[postId];
+    setCommentBoxOpen(prev => ({ ...prev, [postId]: open }));
+    // Load real comments when the box is opened for the first time
+    if (open && !commentsByPost[postId]) {
+      const res = await feedsApi.getComments(postId);
+      if (res.success && res.data) {
+        setCommentsByPost(prev => ({ ...prev, [postId]: res.data }));
+      }
+    }
+  };
+
+  const submitComment = async (postId: string) => {
+    const content = (commentDraft[postId] || '').trim();
+    if (!content) return;
+    setCommentLoading(prev => ({ ...prev, [postId]: true }));
+    const res = await feedsApi.createComment(postId, content);
+    if (res.success && res.data) {
+      setCommentsByPost(prev => ({ ...prev, [postId]: [...(prev[postId] || []), res.data] }));
+      setCommentDraft(prev => ({ ...prev, [postId]: '' }));
+      // bump the real comment counter
+      setFeeds(feeds.map(f => f.id === postId ? { ...f, comments: (f.comments || 0) + 1 } : f));
+    }
+    setCommentLoading(prev => ({ ...prev, [postId]: false }));
+  };
+
+  const toggleRepost = async (postId: string) => {
+    const res = await feedsApi.toggleRepost(postId);
+    if (res.success && res.data) {
+      setRepostedPosts(prev => ({ ...prev, [postId]: res.data.reposted }));
+      setFeeds(feeds.map(f => f.id === postId ? { ...f, shares: res.data.shares } : f));
+    }
+  };
+
+  const sharePost = async (postId: string) => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      /* clipboard may be blocked; still show feedback */
+    }
+    setShareCopied(prev => ({ ...prev, [postId]: true }));
+    setTimeout(() => setShareCopied(prev => ({ ...prev, [postId]: false })), 2000);
+  };
+
+  const startDirectChat = (name: string, avatar: string, participantId?: string) => {
+    if (onSelectDirectChat) {
+      onSelectDirectChat(name, avatar, participantId);
+    }
+  };
+
+  const handleConnectMember = (member: any) => {
+    const name = member.name;
+    // Connect actually opens a direct chat with that person (real action)
+    startDirectChat(name, member.avatar || '', member.id);
     setConnectedMembers(prev => ({
       ...prev,
-      [name]: !prev[name]
+      [name]: true
     }));
   };
 
@@ -653,6 +737,43 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   />
                 </div>
 
+                {/* Inline media URL input (functional, no demo defaults) */}
+                {mediaInput && (
+                  <form
+                    className="flex items-center gap-2"
+                    id="composer-media-input-row"
+                    onSubmit={(e) => { e.preventDefault(); attachMediaFromInput(); }}
+                  >
+                    <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wide shrink-0">
+                      {mediaInput.type === 'image' ? '🔗 Image URL' : '🔗 Video URL'}
+                    </span>
+                    <input
+                      type="url"
+                      autoFocus
+                      value={mediaUrl}
+                      onChange={(e) => setMediaUrl(e.target.value)}
+                      placeholder="https://... (paste a public image/video URL)"
+                      className="flex-1 bg-[#FAFAFA] border border-stone-200 rounded-full px-3.5 py-2 text-xs outline-none focus:border-[#FF5722] transition min-w-0"
+                      id="composer-media-url-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!/^https?:\/\/\S+$/.test(mediaUrl.trim())}
+                      className="px-3.5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-stone-950 text-xs font-bold rounded-full transition disabled:opacity-40 cursor-pointer"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMediaInput(null); setMediaUrl(''); }}
+                      className="px-2.5 py-2 text-stone-400 hover:text-stone-700 text-xs rounded-full transition cursor-pointer"
+                      aria-label="Cancel media input"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </form>
+                )}
+
                 {/* 🛑 HIGH-FIDELITY DYNAMIC ATTACHMENTS CAROUSEL STAGE */}
                 {draftAttachments.length > 0 && (
                   <div className="relative w-full aspect-video md:max-h-72 bg-stone-950 border border-stone-200 rounded-xl overflow-hidden shadow-inner select-none" id="composer-attachment-stage">
@@ -694,14 +815,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                     <div className="absolute bottom-4 left-4 flex gap-2">
                       <button 
                         type="button"
-                        onClick={() => {
-                          const url = prompt("Enter Unsplash Image URL, or submit background template:");
-                          if (url) {
-                            setDraftAttachments([...draftAttachments, { type: 'image', url }]);
-                            setDraftAttachmentIndex(draftAttachments.length);
-                            setIsDraftPlayingVideo(false);
-                          }
-                        }}
+                        onClick={() => openMediaInput('image')}
                         className="w-8 h-8 bg-black/75 hover:bg-black text-white border border-white/15 rounded-full flex items-center justify-center transition active:scale-90 shadow-sm"
                         title="Attach Camera/Image"
                       >
@@ -710,14 +824,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
 
                       <button 
                         type="button"
-                        onClick={() => {
-                          const url = prompt("Enter Unsplash Video Thumbnail URL:", "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800");
-                          if (url) {
-                            setDraftAttachments([...draftAttachments, { type: 'video', url }]);
-                            setDraftAttachmentIndex(draftAttachments.length);
-                            setIsDraftPlayingVideo(false);
-                          }
-                        }}
+                        onClick={() => openMediaInput('video')}
                         className="w-8 h-8 bg-black/75 hover:bg-black text-white border border-white/15 rounded-full flex items-center justify-center transition active:scale-90 shadow-sm"
                         title="Attach Video"
                       >
@@ -784,13 +891,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                   <div className="flex items-center gap-4 text-stone-500 text-xs font-semibold" id="com-composer-attachments">
                     <button 
                       type="button"
-                      onClick={() => {
-                        const imgUrl = prompt("Enter an Unsplash Image URL to attach:", "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800");
-                        if (imgUrl) {
-                          setDraftAttachments([...draftAttachments, { type: 'image', url: imgUrl }]);
-                          setDraftAttachmentIndex(draftAttachments.length);
-                        }
-                      }}
+                      onClick={() => openMediaInput('image')}
                       className="flex items-center gap-1.5 hover:text-stone-900 transition text-[13px] font-sans cursor-pointer"
                     >
                       <ImageIcon className="w-4 h-4 text-emerald-500" />
@@ -799,13 +900,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                     
                     <button 
                       type="button"
-                      onClick={() => {
-                        const vidUrl = prompt("Enter an Unsplash Video Poster URL to attach:", "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800");
-                        if (vidUrl) {
-                          setDraftAttachments([...draftAttachments, { type: 'video', url: vidUrl }]);
-                          setDraftAttachmentIndex(draftAttachments.length);
-                        }
-                      }}
+                      onClick={() => openMediaInput('video')}
                       className="flex items-center gap-1.5 hover:text-stone-900 transition text-[13px] font-sans cursor-pointer"
                     >
                       <VideoIcon className="w-4 h-4 text-amber-500" />
@@ -1027,37 +1122,78 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                           </button>
 
                           <button 
-                            onClick={() => {
-                              alert("Post reposted with citation to your native feeds dashboard!");
-                            }}
-                            className="flex items-center gap-1.5 hover:text-stone-900 transition whitespace-nowrap cursor-pointer"
+                            onClick={() => toggleRepost(feed.id)}
+                            title={repostedPosts[feed.id] ? 'Remove repost' : 'Repost this post'}
+                            className={`flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer ${repostedPosts[feed.id] ? 'text-emerald-600' : 'hover:text-stone-900'}`}
                           >
-                            <span className="text-xs font-bold text-stone-300 hover:text-emerald-500">⇄</span>
+                            <span className={`text-xs font-bold ${repostedPosts[feed.id] ? 'text-emerald-500' : 'text-stone-300 hover:text-emerald-500'}`}>⇄</span>
                             <span>{feed.shares}</span>
                           </button>
 
                           <button 
-                            onClick={() => {
-                              const comment = prompt("Enter your comment text on Afolabi's post:");
-                              if (comment) alert(`Comment posted contextually: "${comment}"`);
-                            }}
-                            className="flex items-center gap-1.5 hover:text-stone-900 transition whitespace-nowrap cursor-pointer"
+                            onClick={() => toggleCommentBox(feed.id)}
+                            className={`flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer ${commentBoxOpen[feed.id] ? 'text-[#FF5722]' : 'hover:text-stone-900'}`}
                           >
-                            <MessageCircle className="w-4 h-4 text-stone-300" />
+                            <MessageCircle className={`w-4 h-4 ${commentBoxOpen[feed.id] ? 'text-[#FF5722]' : 'text-stone-300'}`} />
                             <span>{feed.comments}</span>
                           </button>
 
                           <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(window.location.href);
-                              alert("Post snippet connection link copied to your clipboard!");
-                            }}
+                            onClick={() => sharePost(feed.id)}
                             className="flex items-center gap-1.5 hover:text-stone-900 transition ml-auto whitespace-nowrap cursor-pointer"
                           >
                             <Share2 className="w-4 h-4 text-stone-300" />
-                            <span>Share</span>
+                            <span className={shareCopied[feed.id] ? 'text-emerald-600' : ''}>{shareCopied[feed.id] ? 'Copied!' : 'Share'}</span>
                           </button>
                         </div>
+
+                        {/* Real comment composer + thread */}
+                        {commentBoxOpen[feed.id] && (
+                          <div className="border-t border-stone-50/80 pt-3 mt-2 flex flex-col gap-2.5" id={`feed-comments-box-${feed.id}`}>
+                            {(commentsByPost[feed.id] || []).length === 0 && (
+                              <p className="text-[11px] text-stone-400 text-left">No comments yet — be the first to reply.</p>
+                            )}
+                            {(commentsByPost[feed.id] || []).map((c: any) => (
+                              <div key={c.id} className="flex items-start gap-2.5" id={`feed-comment-${c.id}`}>
+                                <Avatar
+                                  name={c.author || 'Member'}
+                                  src={c.authorAvatar}
+                                  className="w-7 h-7 rounded-full shrink-0 border border-stone-100"
+                                  textClassName="text-[9px]"
+                                />
+                                <div className="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2 text-left flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-bold text-[11px] text-stone-800">{c.author || 'Member'}</span>
+                                    <span className="text-[9px] text-stone-400 font-mono">
+                                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">{c.content}</p>
+                                </div>
+                              </div>
+                            ))}
+                            <form
+                              className="flex items-center gap-2"
+                              onSubmit={(e) => { e.preventDefault(); submitComment(feed.id); }}
+                            >
+                              <input
+                                type="text"
+                                value={commentDraft[feed.id] || ''}
+                                onChange={(e) => setCommentDraft(prev => ({ ...prev, [feed.id]: e.target.value }))}
+                                placeholder="Write a comment..."
+                                className="flex-1 bg-[#FAFAFA] border border-stone-200 rounded-full px-3.5 py-2 text-xs outline-none focus:border-[#FF5722] transition"
+                                id={`comment-input-${feed.id}`}
+                              />
+                              <button
+                                type="submit"
+                                disabled={commentLoading[feed.id] || !(commentDraft[feed.id] || '').trim()}
+                                className="px-3.5 py-2 bg-stone-950 hover:bg-stone-800 disabled:opacity-40 text-white text-xs font-bold rounded-full transition cursor-pointer"
+                              >
+                                {commentLoading[feed.id] ? 'Posting...' : 'Post'}
+                              </button>
+                            </form>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1138,9 +1274,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                           <div className="flex justify-between items-center mt-3.5 pt-3.5 border-t border-stone-50" id="collab-actions-block">
                             <span className="text-[11px] text-stone-400 font-sans">Offered by <strong className="text-stone-700">{offer.creator}</strong></span>
                             <button 
-                              onClick={() => {
-                                alert(`Request submitted contextually to ${offer.creator}. Check messages soon!`);
-                              }}
+                              onClick={() => startDirectChat(offer.creator, offer.creatorAvatar, offer.creatorId)}
                               className="px-4.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-stone-950 text-xs font-bold rounded-full transition shadow-2xs whitespace-nowrap cursor-pointer"
                             >
                               Apply to Collab
@@ -1189,9 +1323,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
                             </div>
 
                             <button 
-                              onClick={() => {
-                                alert(`Connect signal dispatched securely to partners. Direct messages opened!`);
-                              }}
+                              onClick={() => startDirectChat(req.creator, req.creatorAvatar, req.creatorId)}
                               className="px-4 py-1.5 bg-stone-950 hover:bg-stone-850 text-white font-extrabold text-xs rounded-full transition whitespace-nowrap cursor-pointer"
                             >
                               Connect & Trade
@@ -1265,7 +1397,7 @@ export default function CommunitySection({ communityName, onBackToDashboard }: C
 
                         {/* Orange Connect text trigger links matching visual screens */}
                         <button 
-                          onClick={() => handleConnectMember(member.name)}
+                          onClick={() => handleConnectMember(member)}
                           className={`text-xs font-sans font-bold cursor-pointer transition select-none
                             ${isConnected 
                               ? 'text-emerald-650 hover:text-emerald-700' 
