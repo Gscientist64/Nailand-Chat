@@ -7,6 +7,7 @@ import { users, verificationCodes } from '../db/schema.js';
 import { generateToken, authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 import { generateCode, sendVerificationCode, sendPasswordResetCode } from '../lib/email.js';
+import { findSojournersCamp, autoJoinCommunity } from '../db/defaults.js';
 
 const router = Router();
 
@@ -132,6 +133,16 @@ router.post('/signup', validate(signupSchema), async (req: Request, res: Respons
 
     // Generate + email a verification code
     await createAndSendCode(email, 'verify_email');
+
+    // Every new member is welcomed into Sojourners' Camp (spec: universal starting community)
+    try {
+      const campId = await findSojournersCamp();
+      if (campId) {
+        await autoJoinCommunity(newUser.id, campId);
+      }
+    } catch (joinError) {
+      console.error('Auto-join Sojourners Camp failed (non-fatal):', joinError);
+    }
 
     // Generate JWT
     const token = generateToken({ userId: newUser.id, email: newUser.email });

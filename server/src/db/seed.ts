@@ -199,6 +199,12 @@ async function seed() {
   }
   console.log(`  ✓ ${sampleNotifications.length} notifications`);
 
+  // ============================================================
+  // 5. Apply default NaiLAND regions & communities (spec: V1)
+  // ============================================================
+  console.log('\n  Applying default regions & communities...');
+  await ensureDefaultCommunities(createdUsers[0].id);
+
   console.log('\n✅ Seeding complete!');
   console.log(`   ${createdUsers.length} users`);
   console.log(`   ${createdCommunities.length} communities`);
@@ -211,6 +217,7 @@ async function seed() {
 
 // Need to import eq for the update
 import { eq } from 'drizzle-orm';
+import { ensureDefaultCommunities } from './defaults.js';
 
 seed().catch((error) => {
   console.error('❌ Seed failed:', error);

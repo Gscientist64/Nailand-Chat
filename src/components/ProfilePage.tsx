@@ -3,7 +3,7 @@ import { useAuth } from '../lib/AuthContext';
 import { usersApi, communitiesApi } from '../lib/api';
 import Avatar from './Avatar';
 import { Check, Globe, Mail, Users, Pencil, X, MapPin, Camera, Loader2 } from 'lucide-react';
-import { REGION_OPTIONS, normalizeRegion } from '../lib/regions';
+import { REGION_OPTIONS, NAILAND_REGIONS, normalizeRegion } from '../lib/regions';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -35,7 +35,7 @@ export default function ProfilePage() {
       setForm({
         firstName: user.firstName || '',
         secondName: user.secondName || '',
-        region: normalizeRegion(user.region),
+        region: normalizeRegion(user.region, user.interests),
         interests: (user.interests || []).join(', '),
         avatarUrl: user.avatarUrl || '',
       });
@@ -189,7 +189,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Region</label>
               <select
-                value={normalizeRegion(form.region)}
+                value={normalizeRegion(form.region, (user.interests || []))}
                 onChange={(e) => setForm({ ...form, region: e.target.value })}
                 className="w-full bg-[#FAFAFA] border border-stone-200 rounded-xl px-3.5 py-3 text-xs outline-none focus:border-amber-400 cursor-pointer"
                 id="profile-region-select"
@@ -198,7 +198,7 @@ export default function ProfilePage() {
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-stone-400 font-mono">Nigeria geo-political zones</span>
+              <span className="text-[9px] text-stone-400 font-mono">One of the seven NaiLAND regions</span>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Profile Picture</label>

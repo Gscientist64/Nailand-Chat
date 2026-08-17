@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Globe } from 'lucide-react';
+import { Star, Globe, Sparkles } from 'lucide-react';
 import { useCommunities } from '../lib/CommunitiesContext';
+import { useAuth } from '../lib/AuthContext';
 import { communitiesApi } from '../lib/api';
-import { CATEGORIES, categoryMatchesTags } from '../lib/categories';
+import { CATEGORIES, categoryMatchesTags, scoreCommunity, interestToRegion } from '../lib/categories';
 import Avatar from './Avatar';
 
 interface CommunityDirectoryProps {
@@ -13,6 +14,14 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [activeCategory, setActiveCategory] = useState('Creative');
   const { communities, isLoading } = useCommunities();
+  const { user } = useAuth();
+
+  // Spec §13 — discovery scoring: Interest 60% + Region 25% + Activity 15%
+  const userRegion = interestToRegion(user?.interests || []);
+  const scored = (communities as any[])
+    .map((c) => ({ ...c, score: scoreCommunity(c, user?.interests || [], userRegion) }))
+    .sort((a, b) => b.score - a.score);
+  const recommended = scored.filter((c) => c.score > 0).slice(0, 4);
 
   // My communities fetched from API
   const [myCommunities, setMyCommunities] = useState<any[]>([]);
@@ -33,8 +42,10 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
   // Left rail list: all communities or favorites (joined)
   const leftList = activeTab === 'favorites' ? myCommunities : communities;
 
-  // Right panel results: communities matching the active category (by tags)
-  const categoryResults = communities.filter((c) => categoryMatchesTags(activeCategory, c.tags));
+  // Right panel results: communities matching the active category (by tags), sorted by relevance score
+  const categoryResults = communities
+    .filter((c) => categoryMatchesTags(activeCategory, c.tags))
+    .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 lg:p-10 text-left max-w-7xl mx-auto bg-white font-sans" id="community-directory-root">
@@ -115,6 +126,37 @@ export default function CommunityDirectory({ onSelectCommunity }: CommunityDirec
               Community are gotten from regions, each regions has communities underneath
             </p>
           </div>
+
+          {/* Recommended for you (spec §3, §13) */}
+          {recommended.length > 0 && (
+            <div className="flex flex-col gap-3" id="dir-recommended-section">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                <span className="text-[13px] font-bold text-stone-900">Recommended for you</span>
+                <span className="text-[10px] text-stone-400 font-mono">matched to {userRegion}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" id="dir-recommended-grid">
+                {recommended.map((c: any) => (
+                  <button
+                    key={c.id}
+                    onClick={() => onSelectCommunity(c.name)}
+                    className="flex items-center gap-3 p-3 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50/70 to-white hover:border-amber-300 hover:shadow-sm transition cursor-pointer text-left"
+                    id={`dir-recommended-card-${c.id}`}
+                  >
+                    <Avatar name={c.name} src={c.avatar} className="w-11 h-11 rounded-full border border-amber-200 shrink-0" textClassName="text-sm" />
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[13px] font-bold text-stone-900 truncate">{c.name}</span>
+                      <span className="block text-[11px] text-stone-500 truncate">{c.description}</span>
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFB300]"></span>
+                        {c.region || 'Global'} · {Math.round(c.score)}% match
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Category pills */}
           <div className="flex items-center gap-2.5 flex-wrap" id="dir-category-pills">

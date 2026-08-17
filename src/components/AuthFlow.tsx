@@ -4,6 +4,8 @@ import { ActiveView, UserProfile } from '../types';
 import { useAuth } from '../lib/AuthContext';
 import { authApi } from '../lib/api';
 import { ArrowLeft, Check, ShieldAlert, KeyRound, Mail, User, Eye, EyeOff } from 'lucide-react';
+import { NAILAND_REGIONS } from '../lib/regions';
+import { interestToRegion } from '../lib/categories';
 
 interface AuthFlowProps {
   initialView: ActiveView;
@@ -82,15 +84,10 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
     }
   };
 
-  // Regions List
-  const [selectedRegion, setSelectedRegion] = useState<string>('Africa');
-  const regions = [
-    { name: 'Africa', emoji: '🌍', members: '24k active collaborators' },
-    { name: 'Asia', emoji: '🌏', members: '12k collaborators' },
-    { name: 'Europe', emoji: '🇪🇺', members: '9k collaborators' },
-    { name: 'North America', emoji: '🌎', members: '15k collaborators' },
-    { name: 'South America', emoji: '🌎', members: '4k collaborators' }
-  ];
+  // Region selection — one of the seven NaiLAND regions (spec: §2, §3)
+  const [selectedRegion, setSelectedRegion] = useState<string>('Creative');
+  // Primary region derived from the user's chosen interests (spec §3 routing)
+  const primaryRegion = interestToRegion(selectedInterests);
 
   // Pass Reset flow helpers
   const [resetEmail, setResetEmail] = useState('');
@@ -177,6 +174,8 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
 
   const handleInterestsNext = () => {
     auth.updateUser({ interests: selectedInterests });
+    // Spec §3 — interests determine the primary region
+    setSelectedRegion(primaryRegion);
     setCurrentView(ActiveView.SUGGESTED_REGIONS);
   };
 
@@ -1407,41 +1406,47 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
           <div className="text-left" id="suggested-regions-view">
             <h2 className="font-lora text-[24px] leading-[30px] font-normal text-stone-950 mb-1" id="region-h2">Suggested Region</h2>
             <p className="font-sans text-[14px] leading-[22px] text-stone-500 mb-6" id="region-p">
-              These are suggested community / region based on your personalised interest
+              Based on your interests, your primary region is <strong className="text-stone-900">{primaryRegion}</strong>. Pick your region — we will recommend communities to match.
             </p>
 
-            {/* Scrollable SUGGESTED ROOMS/CHANNELS checklist frame */}
+            {/* Primary region highlight card */}
+            <div className="flex items-center gap-2.5 bg-[#FFF8E1] border border-[#f8c21a]/60 rounded-xl px-3.5 py-2.5 mb-4" id="primary-region-card">
+              <span className="text-base">{NAILAND_REGIONS.find(r => r.name === primaryRegion)?.emoji || '✨'}</span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-mono uppercase tracking-wide text-[#B45309] font-bold">Your primary region</span>
+                <span className="text-sm font-bold text-stone-900">{primaryRegion}</span>
+              </div>
+            </div>
+
+            {/* Seven NaiLAND regions checklist */}
             <div className="flex flex-col gap-2.5 mb-8 max-h-[380px] overflow-y-auto pr-1" id="regions-checklist">
-              {[
-                { id: 0, title: 'Program Prompt', desc: "Let's discuss computer language beyond normal limits." },
-                { id: 1, title: 'UI/UX Design Studio', desc: "Collaborative wireframing, peer testing and Figma reviews." },
-                { id: 2, title: 'Kampala Tech Lounge', desc: "Local peer hackathons, cloud-native deployments and demo events." },
-                { id: 3, title: 'Startup Accelerator', desc: "Pitch deck reviews, MVP architecture planning and token economics." },
-                { id: 4, title: 'Wellness Circle', desc: "Daily breathing, mental exercises and habits tracking for entrepreneurs." },
-                { id: 5, title: 'Web3 Pioneers Uganda', desc: "Solidity smart contract security, token creation and deployment." }
-              ].map((item, idx) => {
-                // Initial loaded states: index 0 and 2 are active
-                const isSelected = selectedInterests.some(sel => item.title.includes(sel)) || idx === 0 || idx === 2;
+              {NAILAND_REGIONS.map((region, idx) => {
+                const isSelected = selectedRegion === region.name;
+                const isPrimary = region.name === primaryRegion;
                 return (
                   <div
-                    key={item.id}
-                    className="p-3.5 rounded-xl border border-stone-200 bg-white transition flex justify-between items-center"
-                    id={`region-option-${item.id}`}
+                    key={region.name}
+                    onClick={() => setSelectedRegion(region.name)}
+                    className={`p-3.5 rounded-xl border transition flex justify-between items-center cursor-pointer select-none ${isSelected ? 'border-[#f8c21a] bg-[#FFFDF5] shadow-sm' : 'border-stone-200 bg-white hover:border-stone-300'}`}
+                    id={`region-option-${idx}`}
                   >
-                    <div className="flex flex-col pr-4" id={`region-txt-${item.id}`}>
-                      <span className="text-sm font-semibold text-stone-900" id={`region-title-${item.id}`}>{item.title}</span>
-                      <span className="text-[11px] text-stone-400 font-sans mt-0.5" id={`region-users-${item.id}`}>{item.desc}</span>
+                    <div className="flex flex-col pr-4" id={`region-txt-${idx}`}>
+                      <span className="text-sm font-semibold text-stone-900 flex items-center gap-2" id={`region-title-${idx}`}>
+                        <span>{region.emoji}</span> {region.name}
+                        {isPrimary && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#f8c21a]/20 text-[#B45309] font-mono uppercase tracking-wide">Primary</span>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-sans mt-0.5" id={`region-users-${idx}`}>{region.desc}</span>
                     </div>
-                    
-                    {/* Circle Join Indicator toggle button on right */}
-                    <div className="shrink-0 cursor-pointer transition active:scale-95 pr-1">
+
+                    {/* Circle selection indicator */}
+                    <div className="shrink-0 pr-1">
                       {isSelected ? (
-                        /* Yellow tick circle selection */
                         <div className="w-6 h-6 rounded-full bg-[#f8c21a] flex items-center justify-center text-stone-950 shadow-sm font-black text-[12px] pb-[1px]">
                           ✓
                         </div>
                       ) : (
-                        /* Dark black circle join button */
                         <div className="w-6 h-6 rounded-full bg-stone-900 hover:bg-stone-800 flex items-center justify-center text-white shadow-sm font-bold text-[12px] pb-[1px]">
                           +
                         </div>
@@ -1457,7 +1462,7 @@ export default function AuthFlow({ initialView, onSuccess, onBackToHome, onLogIn
               className="w-full bg-[#f8c21a] hover:bg-[#e0ac10] font-bold text-[#3c1d01] py-3 rounded-full text-xs shadow-md cursor-pointer text-center flex justify-center items-center gap-2 whitespace-nowrap transition transform active:scale-[0.98]"
               id="region-btn-confirm"
             >
-              <span>Continue</span>
+              <span>Continue to {selectedRegion}</span>
             </button>
           </div>
         )}

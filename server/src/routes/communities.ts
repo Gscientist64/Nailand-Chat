@@ -156,6 +156,8 @@ const createCommunitySchema = z.object({
   description: z.string().min(1),
   avatar: z.string().url(),
   tags: z.array(z.string()).optional().default([]),
+  region: z.string().max(100).optional().default(''),
+  status: z.string().max(30).optional().default('active'),
 });
 
 router.post('/', authenticate, validate(createCommunitySchema), async (req: Request, res: Response) => {
@@ -165,6 +167,7 @@ router.post('/', authenticate, validate(createCommunitySchema), async (req: Requ
       .values({
         ...req.body,
         createdBy: req.user!.id,
+        status: 'active',
       })
       .returning();
 

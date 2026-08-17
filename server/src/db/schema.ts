@@ -42,10 +42,15 @@ export const communities = pgTable('communities', {
   avatar: text('avatar').notNull(),
   memberCount: integer('member_count').default(0),
   tags: jsonb('tags').$type<string[]>().default([]),
+  // NaiLAND region this community belongs to (one of the seven regions)
+  region: varchar('region', { length: 100 }).default(''),
+  // Lifecycle: proposed → under_review → approved → active → inactive → archived
+  status: varchar('status', { length: 30 }).default('active'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
   index('communities_name_idx').on(table.name),
+  index('communities_region_idx').on(table.region),
 ]);
 
 export const communitiesRelations = relations(communities, ({ many }) => ({
