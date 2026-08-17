@@ -29,6 +29,8 @@ export function CommunitiesProvider({ children }: { children: React.ReactNode })
           memberCount: c.memberCount || 0,
           tags: c.tags || [],
           createdAt: c.createdAt,
+          region: c.region || '',
+          status: c.status || 'active',
         }))
       );
     }

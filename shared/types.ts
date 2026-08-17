@@ -69,6 +69,8 @@ export interface Community {
   memberCount: number;
   tags?: string[];
   createdAt?: string;
+  region?: string;
+  status?: string;
 }
 
 export interface CommunityMember {
