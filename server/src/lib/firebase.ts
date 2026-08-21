@@ -51,14 +51,29 @@ function initFirebase(): App | null {
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (serviceAccountJson) {
     try {
-      let cleanJson = serviceAccountJson.trim();
+      let rawJson = serviceAccountJson.trim();
       if (
-        (cleanJson.startsWith('"') && cleanJson.endsWith('"')) ||
-        (cleanJson.startsWith("'") && cleanJson.endsWith("'"))
+        (rawJson.startsWith('"') && rawJson.endsWith('"')) ||
+        (rawJson.startsWith("'") && rawJson.endsWith("'"))
       ) {
-        cleanJson = cleanJson.slice(1, -1);
+        rawJson = rawJson.slice(1, -1);
       }
-      const parsed = JSON.parse(cleanJson);
+
+      // If base64-encoded, decode it
+      let jsonText = rawJson;
+      if (!rawJson.startsWith('{') && !rawJson.startsWith('[')) {
+        try {
+          const decoded = Buffer.from(rawJson, 'base64').toString('utf8');
+          if (decoded.trim().startsWith('{')) {
+            jsonText = decoded.trim();
+          }
+        } catch {}
+      }
+
+      const parsed = JSON.parse(jsonText);
+      if (parsed.private_key) {
+        parsed.private_key = cleanPrivateKey(parsed.private_key);
+      }
       firebaseAdminApp = initializeApp({ credential: cert(parsed) });
       console.log('  ✓ Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT');
       lastInitError = null;
