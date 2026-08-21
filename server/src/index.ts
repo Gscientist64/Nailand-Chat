@@ -66,7 +66,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     success: true,
     message: 'NaiLand API is running',
-    version: '1.0.6',
+    version: '1.0.7',
     firebaseConfigured: isFirebaseAdminConfigured,
     firebaseAuthReady: !!authInstance,
     firebaseError: lastInitError,

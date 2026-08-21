@@ -1,5 +1,6 @@
 import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
+import { createPrivateKey } from 'node:crypto';
 
 /**
  * Cleanly format the private key string regardless of whether it contains
@@ -80,6 +81,16 @@ function initFirebase(): App | null {
 
   try {
     const privateKey = cleanPrivateKey(rawPrivateKey);
+
+    // Verify key with Node's crypto engine first
+    try {
+      createPrivateKey(privateKey);
+    } catch (cryptoErr: any) {
+      console.error('  ✗ crypto.createPrivateKey failed:', cryptoErr);
+      lastInitError = `crypto error: ${cryptoErr?.message} (rawLen: ${rawPrivateKey.length}, cleanedLen: ${privateKey.length}, lines: ${privateKey.split('\n').length}, rawEnd: ${JSON.stringify(rawPrivateKey.slice(-30))})`;
+      return null;
+    }
+
     firebaseAdminApp = initializeApp({
       credential: cert({
         projectId,
