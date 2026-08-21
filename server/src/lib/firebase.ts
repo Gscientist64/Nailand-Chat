@@ -4,7 +4,7 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 /**
  * Cleanly format the private key string regardless of whether it contains
  * literal newlines, escaped \n characters, carriage returns, surrounding quotes,
- * or even if the BEGIN/END headers are missing or malformed.
+ * or even if the BEGIN/END headers are missing, truncated, or malformed.
  */
 function cleanPrivateKey(raw: string): string {
   let str = raw.trim();
@@ -20,22 +20,15 @@ function cleanPrivateKey(raw: string): string {
   // Handle double or single escaped newlines and carriage returns
   str = str.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r/g, '');
 
-  // If standard BEGIN header is missing, extract base64 chars and build standard PEM lines
-  if (!str.includes('-----BEGIN PRIVATE KEY-----')) {
-    const cleanB64 = str.replace(/[^A-Za-z0-9+/=]/g, '');
-    const lines = cleanB64.match(/.{1,64}/g) || [cleanB64];
-    return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
-  }
+  // Strip any variation of BEGIN or END headers
+  const contentWithoutHeaders = str
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '');
 
-  // If header exists, extract the inner base64 payload and ensure clean 64-char lines
-  const match = str.match(/-----BEGIN [A-Z ]+-----(.*?)-----END [A-Z ]+-----/s);
-  if (match && match[1]) {
-    const innerB64 = match[1].replace(/[^A-Za-z0-9+/=]/g, '');
-    const lines = innerB64.match(/.{1,64}/g) || [innerB64];
-    return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
-  }
-
-  return str;
+  // Extract pure base64 characters
+  const cleanB64 = contentWithoutHeaders.replace(/[^A-Za-z0-9+/=]/g, '');
+  const lines = cleanB64.match(/.{1,64}/g) || [cleanB64];
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
 }
 
 export const isFirebaseAdminConfigured = Boolean(
