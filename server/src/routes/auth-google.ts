@@ -38,6 +38,7 @@ router.post('/google', async (req: Request, res: Response) => {
     try {
       decodedToken = await auth.verifyIdToken(idToken);
     } catch (error) {
+      console.error('Failed to verify Google ID token:', error);
       return res.status(401).json({ success: false, error: 'Invalid or expired Google token' });
     }
 
@@ -130,7 +131,10 @@ router.post('/google', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Google auth error:', error);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error',
+    });
   }
 });
 

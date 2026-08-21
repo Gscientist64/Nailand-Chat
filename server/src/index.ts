@@ -57,13 +57,18 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// ============================================================
+// Firebase
+import { getFirebaseAuth, isFirebaseAdminConfigured } from './lib/firebase.js';
+
 // Health Check
-// ============================================================
 app.get('/api/health', (_req, res) => {
+  const authInstance = getFirebaseAuth();
   res.json({
     success: true,
     message: 'NaiLand API is running',
+    version: '1.0.3',
+    firebaseConfigured: isFirebaseAdminConfigured,
+    firebaseAuthReady: !!authInstance,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
   });
