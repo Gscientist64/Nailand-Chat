@@ -99,7 +99,7 @@ function initFirebase(): App | null {
     return firebaseAdminApp;
   } catch (e: any) {
     console.error('  ✗ Failed to initialize Firebase Admin SDK:', e);
-    lastInitError = `cert() error: ${e?.message || e}`;
+    lastInitError = `cert() error: ${e?.message || e} (key length: ${rawPrivateKey.length}, preview: ${rawPrivateKey.slice(0, 35)}...)`;
     return null;
   }
 }
