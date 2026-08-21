@@ -38,7 +38,6 @@ router.post('/google', async (req: Request, res: Response) => {
     try {
       decodedToken = await auth.verifyIdToken(idToken);
     } catch (error) {
-      console.error('Failed to verify Google ID token:', error);
       return res.status(401).json({ success: false, error: 'Invalid or expired Google token' });
     }
 

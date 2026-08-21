@@ -3,26 +3,39 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 
 /**
  * Cleanly format the private key string regardless of whether it contains
- * literal newlines, escaped \n characters, carriage returns, or surrounding quotes.
+ * literal newlines, escaped \n characters, carriage returns, surrounding quotes,
+ * or even if the BEGIN/END headers are missing or malformed.
  */
-function cleanPrivateKey(key: string): string {
-  let result = key.trim();
-  // Strip enclosing quotes if present
+function cleanPrivateKey(raw: string): string {
+  let str = raw.trim();
+
+  // Strip wrapping quotes
   if (
-    (result.startsWith('"') && result.endsWith('"')) ||
-    (result.startsWith("'") && result.endsWith("'"))
+    (str.startsWith('"') && str.endsWith('"')) ||
+    (str.startsWith("'") && str.endsWith("'"))
   ) {
-    result = result.slice(1, -1);
+    str = str.slice(1, -1);
   }
-  // Replace literal '\n' sequences with real newlines
-  result = result.replace(/\\n/g, '\n');
-  // Strip any carriage returns (\r)
-  result = result.replace(/\r/g, '');
-  // Ensure standard PEM line breaks around header and footer
-  result = result
-    .replace(/-----BEGIN PRIVATE KEY-----\s*/, '-----BEGIN PRIVATE KEY-----\n')
-    .replace(/\s*-----END PRIVATE KEY-----/, '\n-----END PRIVATE KEY-----');
-  return result.trim();
+
+  // Handle double or single escaped newlines and carriage returns
+  str = str.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r/g, '');
+
+  // If standard BEGIN header is missing, extract base64 chars and build standard PEM lines
+  if (!str.includes('-----BEGIN PRIVATE KEY-----')) {
+    const cleanB64 = str.replace(/[^A-Za-z0-9+/=]/g, '');
+    const lines = cleanB64.match(/.{1,64}/g) || [cleanB64];
+    return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  }
+
+  // If header exists, extract the inner base64 payload and ensure clean 64-char lines
+  const match = str.match(/-----BEGIN [A-Z ]+-----(.*?)-----END [A-Z ]+-----/s);
+  if (match && match[1]) {
+    const innerB64 = match[1].replace(/[^A-Za-z0-9+/=]/g, '');
+    const lines = innerB64.match(/.{1,64}/g) || [innerB64];
+    return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  }
+
+  return str;
 }
 
 export const isFirebaseAdminConfigured = Boolean(
