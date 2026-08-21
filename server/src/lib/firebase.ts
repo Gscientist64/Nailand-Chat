@@ -33,6 +33,7 @@ export const isFirebaseAdminConfigured = Boolean(
 );
 
 export let lastInitError: string | null = null;
+let firebaseAdminApp: App | null = null;
 
 function initFirebase(): App | null {
   if (getApps().length > 0) {
