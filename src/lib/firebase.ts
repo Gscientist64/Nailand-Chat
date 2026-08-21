@@ -31,13 +31,16 @@ if (hasFirebaseConfig) {
 // Function to get Google ID token via Firebase popup
 export const getGoogleIdToken = async (): Promise<string> => {
   if (!auth) {
-    throw new Error('Firebase is not configured. Set the VITE_FIREBASE_* environment variables.');
+    throw new Error('Google sign-in is not yet configured. Please set the VITE_FIREBASE_* environment variables in .env.local, or sign up with email and password.');
   }
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     return idToken;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-closed-by-user') {
+      throw new Error('Google sign-in was cancelled.');
+    }
     console.error('Google sign-in error:', error);
     throw error;
   }

@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import getAuth from '../lib/firebase.js';
+import { getFirebaseAuth } from '../lib/firebase.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { generateToken } from '../middleware/auth.js';
 import { eq } from 'drizzle-orm';
+import { findSojournersCamp, autoJoinCommunity } from '../db/defaults.js';
 
 const router = Router();
 
@@ -22,12 +23,20 @@ router.post('/google', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Invalid request' });
     }
 
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      return res.status(503).json({
+        success: false,
+        error: 'Google authentication is not configured on the server. Please set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in server/.env.',
+      });
+    }
+
     const { idToken } = parsed.data;
 
     // Verify the Firebase ID token
     let decodedToken;
     try {
-      decodedToken = await getAuth().verifyIdToken(idToken);
+      decodedToken = await auth.verifyIdToken(idToken);
     } catch (error) {
       return res.status(401).json({ success: false, error: 'Invalid or expired Google token' });
     }
@@ -47,10 +56,10 @@ router.post('/google', async (req: Request, res: Response) => {
     const firstName = nameParts[0] || 'Google';
     const secondName = nameParts.slice(1).join(' ') || 'User';
 
-    // Check if user exists by firebase uid
+    // Check if user exists by email
     let user = null;
+    let isNewUser = false;
 
-    // The users table doesn't have a firebase_uid column yet — check by email first
     const [existingUser] = await db
       .select()
       .from(users)
@@ -59,20 +68,26 @@ router.post('/google', async (req: Request, res: Response) => {
 
     if (existingUser) {
       user = existingUser;
-      // Ensure the user has a Google-linked avatar if they don't have one
-      if (!existingUser.avatarUrl && picture) {
+      const updates: Record<string, any> = {};
+      if (!existingUser.googleId && firebaseUid) updates.googleId = firebaseUid;
+      if (!existingUser.avatarUrl && picture) updates.avatarUrl = picture;
+      if (!existingUser.emailVerified) updates.emailVerified = true;
+
+      if (Object.keys(updates).length > 0) {
         await db
           .update(users)
-          .set({ avatarUrl: picture })
+          .set(updates)
           .where(eq(users.id, existingUser.id));
-        user = { ...existingUser, avatarUrl: picture };
+        user = { ...existingUser, ...updates };
       }
     } else {
+      isNewUser = true;
       // Create a new user from the Google profile
       const [created] = await db
         .insert(users)
         .values({
           email,
+          googleId: firebaseUid,
           firstName,
           secondName,
           avatarUrl: picture || undefined,
@@ -82,6 +97,16 @@ router.post('/google', async (req: Request, res: Response) => {
         })
         .returning();
       user = created;
+
+      // Welcome every new Google user into Sojourners' Camp (universal starting community)
+      try {
+        const campId = await findSojournersCamp();
+        if (campId) {
+          await autoJoinCommunity(user.id, campId);
+        }
+      } catch (joinError) {
+        console.error('Auto-join Sojourners Camp failed (non-fatal):', joinError);
+      }
     }
 
     const token = generateToken({ userId: user.id, email: user.email });
@@ -101,7 +126,7 @@ router.post('/google', async (req: Request, res: Response) => {
         },
         token,
       },
-      message: 'Signed in with Google',
+      message: isNewUser ? 'Account created with Google' : 'Signed in with Google',
     });
   } catch (error) {
     console.error('Google auth error:', error);
