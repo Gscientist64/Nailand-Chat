@@ -32,7 +32,7 @@ export const isFirebaseAdminConfigured = Boolean(
    process.env.FIREBASE_PRIVATE_KEY)
 );
 
-let firebaseAdminApp: App | null = null;
+export let lastInitError: string | null = null;
 
 function initFirebase(): App | null {
   if (getApps().length > 0) {
@@ -53,9 +53,11 @@ function initFirebase(): App | null {
       const parsed = JSON.parse(cleanJson);
       firebaseAdminApp = initializeApp({ credential: cert(parsed) });
       console.log('  ✓ Firebase Admin SDK initialized from FIREBASE_SERVICE_ACCOUNT');
+      lastInitError = null;
       return firebaseAdminApp;
-    } catch (e) {
+    } catch (e: any) {
       console.error('  ✗ Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', e);
+      lastInitError = `FIREBASE_SERVICE_ACCOUNT error: ${e?.message || e}`;
     }
   }
 
@@ -65,6 +67,7 @@ function initFirebase(): App | null {
   const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !rawPrivateKey) {
+    lastInitError = `Missing env vars: projectId=${!!projectId}, clientEmail=${!!clientEmail}, privateKey=${!!rawPrivateKey}`;
     return null;
   }
 
@@ -78,9 +81,11 @@ function initFirebase(): App | null {
       }),
     });
     console.log('  ✓ Firebase Admin SDK successfully initialized');
+    lastInitError = null;
     return firebaseAdminApp;
-  } catch (e) {
+  } catch (e: any) {
     console.error('  ✗ Failed to initialize Firebase Admin SDK:', e);
+    lastInitError = `cert() error: ${e?.message || e}`;
     return null;
   }
 }

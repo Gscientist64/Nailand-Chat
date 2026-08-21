@@ -58,7 +58,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 // Firebase
-import { getFirebaseAuth, isFirebaseAdminConfigured } from './lib/firebase.js';
+import { getFirebaseAuth, isFirebaseAdminConfigured, lastInitError } from './lib/firebase.js';
 
 // Health Check
 app.get('/api/health', (_req, res) => {
@@ -66,9 +66,10 @@ app.get('/api/health', (_req, res) => {
   res.json({
     success: true,
     message: 'NaiLand API is running',
-    version: '1.0.3',
+    version: '1.0.4',
     firebaseConfigured: isFirebaseAdminConfigured,
     firebaseAuthReady: !!authInstance,
+    firebaseError: lastInitError,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
   });
